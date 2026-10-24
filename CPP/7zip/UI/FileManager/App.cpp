@@ -254,7 +254,7 @@ static unsigned CreateToolbar(HWND parent,
 
   // small space around buttons, like in WinRAR
   {
-    const unsigned padX = h / 6 + 2;
+    const unsigned padX = h / 4 + 4;
     const unsigned padY = h / 10 + 4;
     ::SendMessage(toolBar, TB_SETPADDING, 0, MAKELPARAM(padX, padY));
   }
@@ -381,7 +381,9 @@ static void AddButton(
   but.iBitmap = (int)butInfo.ImageIndex;
   but.idCommand = butInfo.CommandID;
   but.fsState = TBSTATE_ENABLED;
-  but.fsStyle = TBSTYLE_BUTTON;
+  // BTNS_AUTOSIZE: width of each button depends on its own text,
+  // so long text ("Comment") doesn't make all buttons wide.
+  but.fsStyle = TBSTYLE_BUTTON | BTNS_AUTOSIZE;
   but.dwData = 0;
 
   UString s = butInfo.GetText();
