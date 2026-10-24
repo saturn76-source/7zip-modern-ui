@@ -32,16 +32,16 @@
 #define IDB_TB16     177
 #define IDB_TB20     178
 
-// big "up folder" button images
-#define IDB_UP16     190
-#define IDB_UP20     191
-#define IDB_UP24     192
-#define IDB_UP28     193
-#define IDB_UP32     194
-#define IDB_UP40     195
-#define IDB_UP48     196
-#define IDB_UP56     197
-#define IDB_UP64     198
+// big "up folder" button images (190 is used by IDB_MENU_LOGO in Explorer/resource2.rc)
+#define IDB_UP16     300
+#define IDB_UP20     301
+#define IDB_UP24     302
+#define IDB_UP28     303
+#define IDB_UP32     304
+#define IDB_UP40     305
+#define IDB_UP48     306
+#define IDB_UP56     307
+#define IDB_UP64     308
 
 #define IDB_LOGO24   180
 #define IDB_LOGO32   181
