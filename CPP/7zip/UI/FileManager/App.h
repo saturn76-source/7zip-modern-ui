@@ -252,8 +252,8 @@ public:
     const UInt32 mask = ReadToolbarsMask();
     if (mask & ((UInt32)1 << 31))
     {
-      ShowButtonsLables = !g_IsSmallScreen;
-      LargeButtons = false;
+      ShowButtonsLables = true;
+      LargeButtons = !g_IsSmallScreen;
       ShowStandardToolbar = ShowArchiveToolbar = true;
     }
     else
@@ -283,7 +283,10 @@ public:
   }
   void SwitchArchiveToolbar()
   {
-    ShowArchiveToolbar = !ShowArchiveToolbar;
+    // only one toolbar: "View / Toolbars / Toolbar" shows or hides it
+    const bool show = !(ShowArchiveToolbar || ShowStandardToolbar);
+    ShowArchiveToolbar = show;
+    ShowStandardToolbar = show;
     SaveToolbarChanges();
   }
   void SwitchButtonsLables()

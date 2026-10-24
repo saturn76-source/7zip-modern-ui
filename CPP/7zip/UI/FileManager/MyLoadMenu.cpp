@@ -429,7 +429,7 @@ void OnMenuActivating(HWND /* hWnd */, HMENU hMenu, int position)
     
     menu.CheckItemByID(IDM_VIEW_TWO_PANELS, g_App.NumPanels == 2);
     menu.CheckItemByID(IDM_VIEW_FLAT_VIEW, g_App.GetFlatMode());
-    menu.CheckItemByID(IDM_VIEW_ARCHIVE_TOOLBAR, g_App.ShowArchiveToolbar);
+    menu.CheckItemByID(IDM_VIEW_ARCHIVE_TOOLBAR, g_App.ShowArchiveToolbar || g_App.ShowStandardToolbar);
     menu.CheckItemByID(IDM_VIEW_STANDARD_TOOLBAR, g_App.ShowStandardToolbar);
     menu.CheckItemByID(IDM_VIEW_TOOLBARS_LARGE_BUTTONS, g_App.LargeButtons);
     menu.CheckItemByID(IDM_VIEW_TOOLBARS_SHOW_BUTTONS_TEXT, g_App.ShowButtonsLables);

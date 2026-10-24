@@ -115,8 +115,7 @@ BEGIN
 
     POPUP "Toolbars" MY_MENUITEM_ID(IDM_VIEW_TOOLBARS)
     BEGIN
-      MENUITEM "Archive Toolbar",           IDM_VIEW_ARCHIVE_TOOLBAR
-      MENUITEM "Standard Toolbar",          IDM_VIEW_STANDARD_TOOLBAR
+      MENUITEM "Toolbar",                   IDM_VIEW_ARCHIVE_TOOLBAR
       MY_MENUITEM_SEPARATOR
       MENUITEM "Large Buttons",             IDM_VIEW_TOOLBARS_LARGE_BUTTONS
       MENUITEM "Show Buttons Text",         IDM_VIEW_TOOLBARS_SHOW_BUTTONS_TEXT
@@ -167,20 +166,13 @@ IDI_ICON  ICON  "../../UI/FileManager/FM.ico"
 1  24  MOVEABLE PURE   "../../UI/FileManager/7zFM.exe.manifest"
 #endif
 
-IDB_ADD        BITMAP  "../../UI/FileManager/Add.bmp"
-IDB_EXTRACT    BITMAP  "../../UI/FileManager/Extract.bmp"
-IDB_TEST       BITMAP  "../../UI/FileManager/Test.bmp"
-IDB_COPY       BITMAP  "../../UI/FileManager/Copy.bmp"
-IDB_MOVE       BITMAP  "../../UI/FileManager/Move.bmp"
-IDB_DELETE     BITMAP  "../../UI/FileManager/Delete.bmp"
-IDB_INFO       BITMAP  "../../UI/FileManager/Info.bmp"
-IDB_ADD2       BITMAP  "../../UI/FileManager/Add2.bmp"
-IDB_EXTRACT2   BITMAP  "../../UI/FileManager/Extract2.bmp"
-IDB_TEST2      BITMAP  "../../UI/FileManager/Test2.bmp"
-IDB_COPY2      BITMAP  "../../UI/FileManager/Copy2.bmp"
-IDB_MOVE2      BITMAP  "../../UI/FileManager/Move2.bmp"
-IDB_DELETE2    BITMAP  "../../UI/FileManager/Delete2.bmp"
-IDB_INFO2      BITMAP  "../../UI/FileManager/Info2.bmp"
+IDB_TB24       BITMAP  "../../UI/FileManager/tb24.bmp"
+IDB_TB32       BITMAP  "../../UI/FileManager/tb32.bmp"
+IDB_TB40       BITMAP  "../../UI/FileManager/tb40.bmp"
+IDB_TB48       BITMAP  "../../UI/FileManager/tb48.bmp"
+IDB_TB64       BITMAP  "../../UI/FileManager/tb64.bmp"
+IDB_TB72       BITMAP  "../../UI/FileManager/tb72.bmp"
+IDB_TB96       BITMAP  "../../UI/FileManager/tb96.bmp"
 
 
 STRINGTABLE
@@ -254,6 +246,11 @@ BEGIN
   IDS_BUTTON_MOVE    "Move"
   IDS_BUTTON_DELETE  "Delete"
   IDS_BUTTON_INFO    "Info"
+  IDS_BUTTON_VIEW    "View"
+  IDS_BUTTON_FIND    "Find"
+  IDS_BUTTON_WIZARD  "Wizard"
+  IDS_BUTTON_REPAIR  "Repair"
+  IDS_BUTTON_ABOUT   "About 7-Zip"
 
   IDS_SPLITTING            "Splitting..."
   IDS_SPLIT_CONFIRM_TITLE  "Confirm Splitting"

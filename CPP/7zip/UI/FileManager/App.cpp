@@ -141,6 +141,71 @@ HRESULT CApp::CreateOnePanel(unsigned panelIndex, const UString &mainPath, const
 }
 
 
+/*
+  WinRAR-style toolbar:
+    one toolbar, big colored icons with the text under each icon.
+  Images are stored in 32-bit (alpha) bitmap strips: tb24.bmp ... tb96.bmp.
+  Every strip has (kNumToolbarImages) cells of size (height * 1.4) x (height).
+  Cell order in strip: Logo, Add, Extract, Test, View, Delete, Find, Wizard, Info, Repair
+*/
+
+static const unsigned kNumToolbarImages = 10;
+
+struct CToolbarStripInfo
+{
+  unsigned Height;
+  UINT ResID;
+};
+
+static const CToolbarStripInfo g_ToolbarStrips[] =
+{
+  { 24, IDB_TB24 },
+  { 32, IDB_TB32 },
+  { 40, IDB_TB40 },
+  { 48, IDB_TB48 },
+  { 64, IDB_TB64 },
+  { 72, IDB_TB72 },
+  { 96, IDB_TB96 }
+};
+
+static unsigned GetToolbarCellWidth(unsigned height)
+{
+  // must be same formula as used for creating of tb*.bmp files
+  return (height * 14 + 5) / 10;
+}
+
+static unsigned GetScreenDpi()
+{
+  unsigned dpi = 96;
+  HDC dc = ::GetDC(NULL);
+  if (dc)
+  {
+    const int d = ::GetDeviceCaps(dc, LOGPIXELSY);
+    if (d > 0)
+      dpi = (unsigned)d;
+    ::ReleaseDC(NULL, dc);
+  }
+  return dpi;
+}
+
+static const CToolbarStripInfo &GetToolbarStrip(bool largeButtons)
+{
+  const unsigned want = (largeButtons ? 48 : 32) * GetScreenDpi() / 96;
+  unsigned best = 0;
+  unsigned bestDiff = (unsigned)(Int32)-1;
+  for (unsigned i = 0; i < Z7_ARRAY_SIZE(g_ToolbarStrips); i++)
+  {
+    const unsigned h = g_ToolbarStrips[i].Height;
+    const unsigned diff = (h > want) ? (h - want) : (want - h);
+    if (diff < bestDiff)
+    {
+      bestDiff = diff;
+      best = i;
+    }
+  }
+  return g_ToolbarStrips[best];
+}
+
 static void CreateToolbar(HWND parent,
     NControl::CImageList &imageList,
     NControl::CToolBar &toolBar,
@@ -164,87 +229,111 @@ static void CreateToolbar(HWND parent,
   // backward compatibility.
   toolBar.ButtonStructSize();
 
-  imageList.Create(
-      largeButtons ? 48: 24,
-      largeButtons ? 36: 24,
-      ILC_MASK | ILC_COLOR32, 0, 0);
+  const CToolbarStripInfo &strip = GetToolbarStrip(largeButtons);
+  const unsigned h = strip.Height;
+  const unsigned w = GetToolbarCellWidth(h);
+
+  imageList.Create((int)w, (int)h, ILC_COLOR32, (int)kNumToolbarImages, 0);
+
+  // the strip is 32-bit bitmap with alpha channel.
+  // LR_CREATEDIBSECTION keeps the alpha channel.
+  HBITMAP b = (HBITMAP)::LoadImage(g_hInstance, MAKEINTRESOURCE(strip.ResID),
+      IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION);
+  if (b)
+  {
+    imageList.Add(b);
+    ::DeleteObject(b);
+  }
   toolBar.SetImageList(0, imageList);
+
+  // more space around buttons, like in WinRAR
+  {
+    const unsigned pad = h / 4 + 4;
+    ::SendMessage(toolBar, TB_SETPADDING, 0, MAKELPARAM(pad, pad / 2 + 2));
+  }
 }
 
 
 struct CButtonInfo
 {
   int CommandID;
-  UINT BitmapResID;
-  UINT Bitmap2ResID;
+  unsigned ImageIndex;  // cell index in tb*.bmp strip
   UINT StringResID;
+  bool ShowText;        // false for logo button
+  bool SeparatorBefore;
 
   UString GetText() const { return LangString(StringResID); }
 };
 
-static const CButtonInfo g_StandardButtons[] =
-{
-  { IDM_COPY_TO,    IDB_COPY,   IDB_COPY2,   IDS_BUTTON_COPY },
-  { IDM_MOVE_TO,    IDB_MOVE,   IDB_MOVE2,   IDS_BUTTON_MOVE },
-  { IDM_DELETE,     IDB_DELETE, IDB_DELETE2, IDS_BUTTON_DELETE } ,
-  { IDM_PROPERTIES, IDB_INFO,   IDB_INFO2,   IDS_BUTTON_INFO }
-};
+/*
+  You can change buttons here:
+    - order of lines = order of buttons in toolbar
+    - CommandID: any command from main menu (IDM_* in resource.h) or kMenuCmdID_Toolbar_*
+*/
 
-static const CButtonInfo g_ArchiveButtons[] =
+static const CButtonInfo g_Buttons[] =
 {
-  { kMenuCmdID_Toolbar_Add,     IDB_ADD,     IDB_ADD2,     IDS_ADD },
-  { kMenuCmdID_Toolbar_Extract, IDB_EXTRACT, IDB_EXTRACT2, IDS_EXTRACT },
-  { kMenuCmdID_Toolbar_Test,    IDB_TEST,    IDB_TEST2,    IDS_TEST }
+  { IDM_ABOUT,                  0, IDS_BUTTON_ABOUT,  false, false },
+  { kMenuCmdID_Toolbar_Add,     1, IDS_ADD,           true,  false },
+  { kMenuCmdID_Toolbar_Extract, 2, IDS_EXTRACT,       true,  false },
+  { kMenuCmdID_Toolbar_Test,    3, IDS_TEST,          true,  false },
+  { IDM_FILE_VIEW,              4, IDS_BUTTON_VIEW,   true,  false },
+  { IDM_DELETE,                 5, IDS_BUTTON_DELETE, true,  false },
+  { IDM_SELECT,                 6, IDS_BUTTON_FIND,   true,  false },
+  { IDM_OPTIONS,                7, IDS_BUTTON_WIZARD, true,  false },
+  { IDM_PROPERTIES,             8, IDS_BUTTON_INFO,   true,  false },
+  { IDM_HASH_ALL,               9, IDS_BUTTON_REPAIR, true,  true  }
 };
-
-static bool SetButtonText(int commandID, const CButtonInfo *buttons, unsigned numButtons, UString &s)
-{
-  for (unsigned i = 0; i < numButtons; i++)
-  {
-    const CButtonInfo &b = buttons[i];
-    if (b.CommandID == commandID)
-    {
-      s = b.GetText();
-      return true;
-    }
-  }
-  return false;
-}
 
 static void SetButtonText(int commandID, UString &s)
 {
-  if (SetButtonText(commandID, g_StandardButtons, Z7_ARRAY_SIZE(g_StandardButtons), s))
-    return;
-  SetButtonText(commandID, g_ArchiveButtons, Z7_ARRAY_SIZE(g_ArchiveButtons), s);
+  for (unsigned i = 0; i < Z7_ARRAY_SIZE(g_Buttons); i++)
+  {
+    const CButtonInfo &b = g_Buttons[i];
+    if (b.CommandID == commandID)
+    {
+      s = b.GetText();
+      return;
+    }
+  }
+}
+
+static void AddSeparator(NControl::CToolBar &toolBar)
+{
+  TBBUTTON but;
+  memset(&but, 0, sizeof(but));
+  but.iBitmap = 8; // separator width
+  but.idCommand = 0;
+  but.fsState = TBSTATE_ENABLED;
+  but.fsStyle = TBSTYLE_SEP;
+  but.iString = -1;
+  #ifdef _UNICODE
+  toolBar.AddButton(1, &but);
+  #else
+  toolBar.AddButtonW(1, &but);
+  #endif
 }
 
 static void AddButton(
-    NControl::CImageList &imageList,
     NControl::CToolBar &toolBar,
-    const CButtonInfo &butInfo, bool showText, bool large)
+    const CButtonInfo &butInfo, bool showText)
 {
+  if (butInfo.SeparatorBefore)
+    AddSeparator(toolBar);
+
   TBBUTTON but;
-  but.iBitmap = 0;
+  memset(&but, 0, sizeof(but));
+  but.iBitmap = (int)butInfo.ImageIndex;
   but.idCommand = butInfo.CommandID;
   but.fsState = TBSTATE_ENABLED;
   but.fsStyle = TBSTYLE_BUTTON;
   but.dwData = 0;
 
   UString s = butInfo.GetText();
-  but.iString = 0;
-  if (showText)
+  but.iString = -1;
+  if (showText && butInfo.ShowText)
     but.iString = (INT_PTR)(LPCWSTR)s;
 
-  but.iBitmap = imageList.GetImageCount();
-  HBITMAP b = ::LoadBitmap(g_hInstance,
-      large ?
-      MAKEINTRESOURCE(butInfo.BitmapResID):
-      MAKEINTRESOURCE(butInfo.Bitmap2ResID));
-  if (b)
-  {
-    imageList.AddMasked(b, RGB(255, 0, 255));
-    ::DeleteObject(b);
-  }
   #ifdef _UNICODE
   toolBar.AddButton(1, &but);
   #else
@@ -257,18 +346,12 @@ void CApp::ReloadToolbars()
   _buttonsImageList.Destroy();
   _toolBar.Destroy();
 
-
+  // there is only one toolbar now.
   if (ShowArchiveToolbar || ShowStandardToolbar)
   {
     CreateToolbar(_window, _buttonsImageList, _toolBar, LargeButtons);
-    unsigned i;
-    if (ShowArchiveToolbar)
-      for (i = 0; i < Z7_ARRAY_SIZE(g_ArchiveButtons); i++)
-        AddButton(_buttonsImageList, _toolBar, g_ArchiveButtons[i], ShowButtonsLables, LargeButtons);
-    if (ShowStandardToolbar)
-      for (i = 0; i < Z7_ARRAY_SIZE(g_StandardButtons); i++)
-        AddButton(_buttonsImageList, _toolBar, g_StandardButtons[i], ShowButtonsLables, LargeButtons);
-
+    for (unsigned i = 0; i < Z7_ARRAY_SIZE(g_Buttons); i++)
+      AddButton(_toolBar, g_Buttons[i], ShowButtonsLables);
     _toolBar.AutoSize();
   }
 }

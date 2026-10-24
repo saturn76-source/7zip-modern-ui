@@ -20,6 +20,15 @@
 #define IDB_DELETE2  155
 #define IDB_INFO2    156
 
+// WinRAR-style toolbar image strips (32-bit with alpha), one per icon height
+#define IDB_TB24     170
+#define IDB_TB32     171
+#define IDB_TB40     172
+#define IDB_TB48     173
+#define IDB_TB64     174
+#define IDB_TB72     175
+#define IDB_TB96     176
+
 #define IDM_HASH_ALL             101
 #define IDM_CRC32                102
 #define IDM_CRC64                103
@@ -185,6 +194,11 @@
 #define IDS_BUTTON_MOVE                 7204
 #define IDS_BUTTON_DELETE               7205
 #define IDS_BUTTON_INFO                 7206
+#define IDS_BUTTON_VIEW                 7207
+#define IDS_BUTTON_FIND                 7208
+#define IDS_BUTTON_WIZARD               7209
+#define IDS_BUTTON_REPAIR               7210
+#define IDS_BUTTON_ABOUT                7211
 
 #define IDS_SPLITTING                   7303
 #define IDS_SPLIT_CONFIRM_TITLE         7304

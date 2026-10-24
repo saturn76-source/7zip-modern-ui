@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Visual Studio project for 7-Zip File Manager (7zFM.exe) with WinRAR-style toolbar.
+  It is a "Makefile" project: Build runs 7-Zip's own makefile with nmake,
+  so the result is the same as the official 7-Zip build.
+  Output: CPP\7zip\Bundles\Fm\x64\7zFM.exe  (standalone, does not need 7z.dll)
+-->
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>18.0</VCProjectVersion>
+    <ProjectGuid>{6E8C3B1A-7F2D-4C1E-9B7A-2D5F0E1C7A01}</ProjectGuid>
+    <Keyword>MakeFileProj</Keyword>
+    <RootNamespace>7zFM</RootNamespace>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v145</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <FmDir>$(MSBuildProjectDirectory)\CPP\7zip\Bundles\Fm</FmDir>
+    <NMakeBuildCommandLine>cd /d "$(FmDir)" &amp;&amp; nmake /nologo PLATFORM=x64</NMakeBuildCommandLine>
+    <NMakeReBuildCommandLine>cd /d "$(FmDir)" &amp;&amp; (if exist x64 rmdir /s /q x64) &amp;&amp; nmake /nologo PLATFORM=x64</NMakeReBuildCommandLine>
+    <NMakeCleanCommandLine>cd /d "$(FmDir)" &amp;&amp; if exist x64 rmdir /s /q x64</NMakeCleanCommandLine>
+    <NMakeOutput>$(FmDir)\x64\7zFM.exe</NMakeOutput>
+    <NMakePreprocessorDefinitions>WIN32;_WIN32;_UNICODE;UNICODE;NDEBUG</NMakePreprocessorDefinitions>
+    <OutDir>$(FmDir)\x64\</OutDir>
+    <IntDir>$(FmDir)\x64\</IntDir>
+    <LocalDebuggerCommand>$(FmDir)\x64\7zFM.exe</LocalDebuggerCommand>
+    <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
+  </PropertyGroup>
+  <ItemGroup>
+    <ClCompile Include="CPP\7zip\UI\FileManager\App.cpp" />
+    <ClCompile Include="CPP\7zip\UI\FileManager\FM.cpp" />
+    <ClCompile Include="CPP\7zip\UI\FileManager\MyLoadMenu.cpp" />
+    <ClCompile Include="CPP\7zip\UI\FileManager\Panel.cpp" />
+    <ClInclude Include="CPP\7zip\UI\FileManager\App.h" />
+    <ClInclude Include="CPP\7zip\UI\FileManager\resource.h" />
+    <ResourceCompile Include="CPP\7zip\UI\FileManager\resource.rc" />
+    <Image Include="CPP\7zip\UI\FileManager\tb24.bmp" />
+    <Image Include="CPP\7zip\UI\FileManager\tb32.bmp" />
+    <Image Include="CPP\7zip\UI\FileManager\tb40.bmp" />
+    <Image Include="CPP\7zip\UI\FileManager\tb48.bmp" />
+    <Image Include="CPP\7zip\UI\FileManager\tb64.bmp" />
+    <Image Include="CPP\7zip\UI\FileManager\tb72.bmp" />
+    <Image Include="CPP\7zip\UI\FileManager\tb96.bmp" />
+    <None Include="CPP\7zip\Bundles\Fm\makefile" />
+    <None Include="TOOLBAR-README.txt" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+</Project>
