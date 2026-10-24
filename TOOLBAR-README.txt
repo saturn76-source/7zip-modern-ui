@@ -25,7 +25,7 @@ BUTTONS (edit table g_Buttons[] in App.cpp to change them)
   Test      -> Test archive
   View      -> View file (F3)
   Delete    -> Delete (Del)
-  Find      -> Select files by mask (Num +)
+  Find      -> Find files in this folder and subfolders (Edit > Find..., Ctrl+F)
   Wizard    -> Options
   Info      -> Properties (Alt+Enter)
   Comment   -> File > Comment (Ctrl+Z)

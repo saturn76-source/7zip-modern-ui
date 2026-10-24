@@ -334,7 +334,7 @@ static const CButtonInfo g_Buttons[] =
   { kMenuCmdID_Toolbar_Test,    2, IDS_TEST,          true,  false },
   { IDM_FILE_VIEW,              3, IDS_BUTTON_VIEW,   true,  false },
   { IDM_DELETE,                 4, IDS_BUTTON_DELETE, true,  false },
-  { IDM_SELECT,                 5, IDS_BUTTON_FIND,   true,  false },
+  { IDM_FIND_FILES,             5, IDS_BUTTON_FIND,   true,  false },
   { IDM_OPTIONS,                6, IDS_BUTTON_WIZARD, true,  false },
   { IDM_PROPERTIES,             7, IDS_BUTTON_INFO,   true,  false },
   { IDM_COMMENT,                8, IDS_BUTTON_COMMENT, true, true  }

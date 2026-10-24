@@ -25,6 +25,7 @@ public:
   bool SelectFirst;
   bool DeleteIsAllowed;
   bool StringsWereChanged;
+  bool EnterIsOK; // Enter / double click closes dialog with OK (also for 2 columns)
   
   UStringVector Strings;
   UStringVector Values;
@@ -38,6 +39,7 @@ public:
     SelectFirst(false),
     DeleteIsAllowed(false),
     StringsWereChanged(false),
+    EnterIsOK(false),
     FocusedItemIndex(-1),
     NumColumns(1)
     {}

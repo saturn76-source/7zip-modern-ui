@@ -246,6 +246,11 @@ void CListViewDialog::DeleteItems()
 
 void CListViewDialog::OnEnter()
 {
+  if (EnterIsOK && !IsKeyDown(VK_MENU))
+  {
+    OnOK();
+    return;
+  }
   if (IsKeyDown(VK_MENU)
       || NumColumns > 1)
   {

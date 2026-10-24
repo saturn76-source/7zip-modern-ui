@@ -315,6 +315,7 @@ public:
   }
 
   void AddToArchive() { GetFocusedPanel().AddToArchive(); }
+  void FindFiles() { GetFocusedPanel().FindFiles(); }
   void ExtractArchives() { GetFocusedPanel().ExtractArchives(); }
   void TestArchives() { GetFocusedPanel().TestArchives(); }
 

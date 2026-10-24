@@ -840,6 +840,9 @@ bool OnMenuCommand(HWND hWnd, unsigned id)
       g_App.InvertSelection();
       g_App.Refresh_StatusBar();
       break;
+    case IDM_FIND_FILES:
+      g_App.FindFiles();
+      break;
     case IDM_SELECT:
       g_App.SelectSpec(true);
       g_App.Refresh_StatusBar();

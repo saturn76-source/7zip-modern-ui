@@ -8,6 +8,7 @@ IDR_ACCELERATOR1 ACCELERATORS
 BEGIN
 //  "N",     IDM_CREATE_FILE,      VIRTKEY, CONTROL, NOINVERT
   VK_F1,   IDM_HELP_CONTENTS,    VIRTKEY, NOINVERT
+  "F",     IDM_FIND_FILES,       VIRTKEY, CONTROL, NOINVERT
   VK_F12,  IDM_FOLDERS_HISTORY,  VIRTKEY, ALT, NOINVERT
 //  VK_F7,   IDM_CREATE_FOLDER,    VIRTKEY, NOINVERT
 END
@@ -91,6 +92,8 @@ BEGIN
     MENUITEM "", 0, MY_MFT_MENUBARBREAK
     MENUITEM "Select by Type\tAlt+[Grey+]", IDM_SELECT_BY_TYPE
     MENUITEM "Deselect by Type\tAlt+[Grey -]", IDM_DESELECT_BY_TYPE
+    MY_MENUITEM_SEPARATOR
+    MENUITEM "&Find...\tCtrl+F",            IDM_FIND_FILES
   END
   POPUP "&View" MY_MENUITEM_ID(IDM_VIEW)
   BEGIN
@@ -269,6 +272,14 @@ BEGIN
   IDS_BUTTON_WIZARD  "Wizard"
   IDS_BUTTON_COMMENT "Comment"
   IDS_BUTTON_ABOUT   "About 7-Zip"
+
+  IDS_FIND_TITLE       "Find"
+  IDS_FIND_PROMPT      "File name (you can use * and ?):"
+  IDS_FIND_RESULT      "Find: {0}"
+  IDS_FIND_SEARCHING   "Searching... (Esc - stop):"
+  IDS_FIND_NOT_FOUND   "No files found"
+  IDS_FIND_UNSUPPORTED "Find works only in folders on disk and in archives"
+  IDS_FIND_TOO_MANY    "Too many files found. Only the first ones are shown."
 
   IDS_SPLITTING            "Splitting..."
   IDS_SPLIT_CONFIRM_TITLE  "Confirm Splitting"

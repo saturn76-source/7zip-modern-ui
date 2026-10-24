@@ -11,6 +11,7 @@
 #include "../../../Windows/PropVariant.h"
 
 #include "ComboDialog.h"
+#include "ListViewDialog.h"
 
 #include "FSFolder.h"
 #include "FormatUtils.h"
@@ -530,4 +531,213 @@ void CPanel::ChangeComment()
       MessageBox_Error_HRESULT_Caption(result, L"Set Comment Error");
   }
   RefreshListCtrl(state);
+}
+
+
+// ---------- Find files (toolbar "Find" button, Edit / Find..., Ctrl+F) ----------
+/*
+  It searches the current folder and all its subfolders.
+  It works for folders on disk and for folders inside archives
+  (it uses IFolderFolder interface, like the panel itself).
+  If the name has no wildcards (* ?), it's searched as part of the name: *name*
+  Esc key stops the search.
+*/
+
+static UString g_FindLastMask;
+static UStringVector g_FindHistory;
+static const unsigned kFindHistoryMax = 20;
+static const unsigned kFindMaxResults = 20000;
+static const unsigned kFindMaxDepth = 64;
+
+struct CFindContext
+{
+  UString Mask;
+  NWindows::NControl::CStatusBar *StatusBar;
+  UString SearchingText;
+  UStringVector Names;
+  UStringVector RelFolders;
+  bool Cancelled;
+  bool TooMany;
+  UInt32 Counter;
+  DWORD LastTime;
+
+  CFindContext(): StatusBar(NULL), Cancelled(false), TooMany(false), Counter(0), LastTime(0) {}
+
+  bool NeedStop(const UString &relFolder)
+  {
+    if (Cancelled || TooMany)
+      return true;
+    if ((++Counter & 63) != 0)
+      return false;
+    if (::GetAsyncKeyState(VK_ESCAPE) & 0x8000)
+    {
+      Cancelled = true;
+      return true;
+    }
+    const DWORD t = ::GetTickCount();
+    if (t - LastTime >= 200)
+    {
+      LastTime = t;
+      if (StatusBar)
+      {
+        StatusBar->SetText(0, SearchingText);
+        StatusBar->SetText(3, relFolder);
+      }
+    }
+    // keep window painted and "responding" during long search
+    MSG msg;
+    while (::PeekMessage(&msg, NULL, WM_PAINT, WM_PAINT, PM_REMOVE))
+      ::DispatchMessage(&msg);
+    return false;
+  }
+};
+
+static void FindInFolder(IFolderFolder *folder, const UString &relPrefix,
+    bool recursive, unsigned depth, CFindContext &ctx)
+{
+  UInt32 numItems = 0;
+  if (folder->GetNumberOfItems(&numItems) != S_OK)
+    return;
+  for (UInt32 i = 0; i < numItems; i++)
+  {
+    if (ctx.NeedStop(relPrefix))
+      return;
+    UString name;
+    {
+      NCOM::CPropVariant prop;
+      if (folder->GetProperty(i, kpidName, &prop) != S_OK || prop.vt != VT_BSTR)
+        continue;
+      name = prop.bstrVal;
+    }
+    bool isDir = false;
+    {
+      NCOM::CPropVariant prop;
+      if (folder->GetProperty(i, kpidIsDir, &prop) == S_OK && prop.vt == VT_BOOL)
+        isDir = VARIANT_BOOLToBool(prop.boolVal);
+    }
+    if (DoesWildcardMatchName(ctx.Mask, name))
+    {
+      if (ctx.Names.Size() >= kFindMaxResults)
+      {
+        ctx.TooMany = true;
+        return;
+      }
+      ctx.Names.Add(name);
+      ctx.RelFolders.Add(relPrefix);
+    }
+    if (isDir && recursive && depth < kFindMaxDepth)
+    {
+      CMyComPtr<IFolderFolder> subFolder;
+      if (folder->BindToFolder(i, &subFolder) == S_OK && subFolder)
+        if (subFolder->LoadItems() == S_OK)
+        {
+          UString subPrefix = relPrefix;
+          subPrefix += name;
+          subPrefix.Add_PathSepar();
+          FindInFolder(subFolder, subPrefix, true, depth + 1, ctx);
+        }
+    }
+  }
+}
+
+void CPanel::FindFiles()
+{
+  if (!_folder || (!IsFSFolder() && !IsArcFolder()))
+  {
+    MessageBox_Error(LangString(IDS_FIND_UNSUPPORTED));
+    return;
+  }
+
+  UString mask;
+  {
+    CComboDialog dlg;
+    LangString(IDS_FIND_TITLE, dlg.Title);
+    LangString(IDS_FIND_PROMPT, dlg.Static);
+    dlg.Value = g_FindLastMask;
+    dlg.Strings = g_FindHistory;
+    if (dlg.Create(GetParent()) != IDOK)
+      return;
+    mask = dlg.Value;
+  }
+  mask.Trim();
+  if (mask.IsEmpty())
+    return;
+
+  g_FindLastMask = mask;
+  {
+    for (unsigned i = 0; i < g_FindHistory.Size();)
+      if (g_FindHistory[i].IsEqualTo_NoCase(mask))
+        g_FindHistory.Delete(i);
+      else
+        i++;
+    g_FindHistory.Insert(0, mask);
+    if (g_FindHistory.Size() > kFindHistoryMax)
+      g_FindHistory.DeleteFrom(kFindHistoryMax);
+  }
+
+  const UString shownMask = mask;
+  if (mask.Find(L'*') < 0 && mask.Find(L'?') < 0)
+  {
+    mask.InsertAtFront(L'*');
+    mask += L'*';
+  }
+
+  const UString baseFolder = _currentFolderPrefix;
+
+  CFindContext ctx;
+  ctx.Mask = mask;
+  ctx.StatusBar = &_statusBar;
+  LangString(IDS_FIND_SEARCHING, ctx.SearchingText);
+  {
+    CDisableTimerProcessing disableTimerProcessing(*this);
+    HCURSOR oldCursor = ::SetCursor(::LoadCursor(NULL, IDC_WAIT));
+    _statusBar.SetText(0, ctx.SearchingText);
+    _statusBar.SetText(3, L"");
+    FindInFolder(_folder, UString(), !_flatMode, 0, ctx);
+    ::SetCursor(oldCursor);
+    _statusBar.SetText(3, L"");
+  }
+  Refresh_StatusBar();
+
+  if (ctx.Names.IsEmpty())
+  {
+    if (!ctx.Cancelled)
+      ::MessageBoxW(GetParent(), LangString(IDS_FIND_NOT_FOUND), LangString(IDS_FIND_TITLE), MB_OK | MB_ICONINFORMATION);
+    return;
+  }
+  if (ctx.TooMany)
+    ::MessageBoxW(GetParent(), LangString(IDS_FIND_TOO_MANY), LangString(IDS_FIND_TITLE), MB_OK | MB_ICONINFORMATION);
+
+  CListViewDialog lv;
+  lv.NumColumns = 2;
+  lv.SelectFirst = true;
+  lv.EnterIsOK = true;
+  lv.Title = MyFormatNew(IDS_FIND_RESULT, shownMask);
+  lv.Title += " (";
+  lv.Title.Add_UInt32(ctx.Names.Size());
+  lv.Title += ")";
+  lv.Strings = ctx.Names;
+  FOR_VECTOR (i, ctx.RelFolders)
+    lv.Values.Add(baseFolder + ctx.RelFolders[i]);
+
+  if (lv.Create(GetParent()) != IDOK)
+    return;
+  const int index = lv.FocusedItemIndex;
+  if (index < 0 || (unsigned)index >= ctx.Names.Size())
+    return;
+
+  const UString name = ctx.Names[(unsigned)index];
+  const UString &rel = ctx.RelFolders[(unsigned)index];
+  if (!rel.IsEmpty() || _currentFolderPrefix != baseFolder)
+  {
+    if (BindToPathAndRefresh(baseFolder + rel) != S_OK)
+      return;
+  }
+  CSelectedState state;
+  state.FocusedName = name;
+  state.FocusedName_Defined = true;
+  state.SelectFocused = true;
+  state.SelectedNames.Add(name);
+  RefreshListCtrl(state);
+  SetFocusToList();
 }
