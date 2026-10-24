@@ -27,7 +27,7 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <FmDir>$(MSBuildProjectDirectory)\CPP\7zip\Bundles\Fm</FmDir>
-    <NMakeBuildCommandLine>cd /d "$(FmDir)" &amp;&amp; nmake /nologo PLATFORM=x64</NMakeBuildCommandLine>
+    <NMakeBuildCommandLine>"$(MSBuildProjectDirectory)\vs_build.cmd"</NMakeBuildCommandLine>
     <NMakeReBuildCommandLine>cd /d "$(FmDir)" &amp;&amp; (if exist x64 rmdir /s /q x64) &amp;&amp; nmake /nologo PLATFORM=x64</NMakeReBuildCommandLine>
     <NMakeCleanCommandLine>cd /d "$(FmDir)" &amp;&amp; if exist x64 rmdir /s /q x64</NMakeCleanCommandLine>
     <NMakeOutput>$(FmDir)\x64\7zFM.exe</NMakeOutput>
@@ -54,6 +54,7 @@
     <Image Include="CPP\7zip\UI\FileManager\tb96.bmp" />
     <None Include="CPP\7zip\Bundles\Fm\makefile" />
     <None Include="TOOLBAR-README.txt" />
+    <None Include="vs_build.cmd" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
