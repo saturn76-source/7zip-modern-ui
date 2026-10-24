@@ -176,12 +176,12 @@ void CApp::SetThemeMode(int mode)
     one toolbar, big colored icons with the text under each icon.
   Images are stored in 32-bit (alpha) bitmap strips: tb24.bmp ... tb96.bmp.
   Every strip has (kNumToolbarImages) square cells of size (height) x (height).
-  Cell order in strip: Add, Extract, Test, View, Delete, Find, Wizard, Info, Comment
+  Cell order in strip: Add, Extract, Test, View, Delete, Find, Wizard, Info, Comment, Copy, Move
   The 7ZIP logo (logo24.bmp ... logo96.bmp) is not a button:
   it's drawn at the left side of toolbar, in the indent area.
 */
 
-static const unsigned kNumToolbarImages = 9;
+static const unsigned kNumToolbarImages = 11;
 
 struct CToolbarStripInfo
 {
@@ -348,6 +348,7 @@ struct CButtonInfo
   UINT StringResID;
   bool ShowText;
   bool SeparatorBefore;
+  bool InDefault;       // false: only in "Available buttons" list of Customize dialog
 
   UString GetText() const { return LangString(StringResID); }
 };
@@ -362,15 +363,18 @@ struct CButtonInfo
 
 static const CButtonInfo g_Buttons[] =
 {
-  { kMenuCmdID_Toolbar_Add,     0, IDS_ADD,           true,  false },
-  { kMenuCmdID_Toolbar_Extract, 1, IDS_EXTRACT,       true,  false },
-  { kMenuCmdID_Toolbar_Test,    2, IDS_TEST,          true,  false },
-  { IDM_FILE_VIEW,              3, IDS_BUTTON_VIEW,   true,  false },
-  { IDM_DELETE,                 4, IDS_BUTTON_DELETE, true,  false },
-  { IDM_FIND_FILES,             5, IDS_BUTTON_FIND,   true,  false },
-  { IDM_OPTIONS,                6, IDS_BUTTON_WIZARD, true,  false },
-  { IDM_PROPERTIES,             7, IDS_BUTTON_INFO,   true,  false },
-  { IDM_COMMENT,                8, IDS_BUTTON_COMMENT, true, true  }
+  { kMenuCmdID_Toolbar_Add,     0, IDS_ADD,            true, false, true  },
+  { kMenuCmdID_Toolbar_Extract, 1, IDS_EXTRACT,        true, false, true  },
+  { kMenuCmdID_Toolbar_Test,    2, IDS_TEST,           true, false, true  },
+  { IDM_FILE_VIEW,              3, IDS_BUTTON_VIEW,    true, false, true  },
+  { IDM_DELETE,                 4, IDS_BUTTON_DELETE,  true, false, true  },
+  { IDM_FIND_FILES,             5, IDS_BUTTON_FIND,    true, false, true  },
+  { IDM_OPTIONS,                6, IDS_BUTTON_WIZARD,  true, false, true  },
+  { IDM_PROPERTIES,             7, IDS_BUTTON_INFO,    true, false, true  },
+  { IDM_COMMENT,                8, IDS_BUTTON_COMMENT, true, true,  true  },
+  // new buttons must be added only at the end of table (saved layouts use indexes)
+  { IDM_COPY_TO,                9, IDS_BUTTON_COPY,    true, false, false },
+  { IDM_MOVE_TO,               10, IDS_BUTTON_MOVE,    true, false, false }
 };
 
 static const int kLayout_Separator = -1;
@@ -381,6 +385,8 @@ static void GetDefaultToolbarLayout(CRecordVector<int> &layout)
   layout.Clear();
   for (unsigned i = 0; i < Z7_ARRAY_SIZE(g_Buttons); i++)
   {
+    if (!g_Buttons[i].InDefault)
+      continue;
     if (g_Buttons[i].SeparatorBefore)
       layout.Add(kLayout_Separator);
     layout.Add((int)i);
