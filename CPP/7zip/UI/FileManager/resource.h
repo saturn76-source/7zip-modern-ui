@@ -95,6 +95,7 @@
 #define IDM_THEME_DARK           572
 #define IDM_THEME_AUTO           573
 #define IDM_VIEW_THEME           574
+#define IDM_VIEW_TOOLBARS_CUSTOMIZE 575
 
 #define IDM_VER_EDIT             580
 #define IDM_VER_COMMIT           581

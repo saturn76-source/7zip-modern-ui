@@ -29,6 +29,7 @@ enum
   kMenuCmdID_Toolbar_Test,
   kMenuCmdID_Toolbar_Chevron,   // ">>" (chevron) button: menu with buttons that don't fit
   kMenuCmdID_Toolbar_Separator, // ID of separator in toolbar (it doesn't send commands)
+  kMenuCmdID_Toolbar_Reload,    // posted after "Customize Toolbar": rebuild toolbar
   kMenuCmdID_Toolbar_End
 };
 
@@ -104,6 +105,7 @@ public:
     _toolbarIconSize = 48;
     _numHiddenToolbarCmds = 0;
     _chevronFont = NULL;
+    _toolbarAdjusting = false;
     SetPanels_AutoRefresh_Mode();
   }
 
@@ -258,6 +260,11 @@ public:
   void SetBookmark(unsigned index) { GetFocusedPanel().SetBookmark(index); }
 
   void ReloadToolbars();
+  void FillToolbarButtons(const CRecordVector<int> &layout);
+  void SaveCurrentToolbarLayout();
+  void CustomizeToolbar();
+  bool OnToolbarAdjustNotify(LPNMHDR pnmh, LRESULT &result);
+  bool _toolbarAdjusting;
   void CreateChevron();
   void UpdateToolbarOverflow(int width);
   void ShowToolbarOverflowMenu();

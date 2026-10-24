@@ -253,6 +253,7 @@ static unsigned CreateToolbar(HWND parent,
       | WS_CHILD
       | WS_VISIBLE
       | WS_CLIPSIBLINGS   // don't paint over the ">>" (chevron) button
+      | CCS_ADJUSTABLE    // "Customize Toolbar" dialog, Alt+drag to move / remove buttons
       | TBSTYLE_FLAT
       | TBSTYLE_TOOLTIPS
       // | TBSTYLE_WRAPABLE  // one row only (like WinRAR): buttons are not moved to next row
@@ -352,9 +353,11 @@ struct CButtonInfo
 };
 
 /*
-  You can change buttons here:
-    - order of lines = order of buttons in toolbar
-    - CommandID: any command from main menu (IDM_* in resource.h) or kMenuCmdID_Toolbar_*
+  All buttons that can be in toolbar.
+  User selects buttons and their order in "Customize Toolbar" dialog.
+  The layout is saved in registry: HKCU\Software\7-Zip\FM : ToolbarLayout
+  as list of indexes in this table, '-' is separator. For example: "0,1,2,-,8"
+  CommandID: any command from main menu (IDM_* in resource.h) or kMenuCmdID_Toolbar_*
 */
 
 static const CButtonInfo g_Buttons[] =
@@ -369,6 +372,99 @@ static const CButtonInfo g_Buttons[] =
   { IDM_PROPERTIES,             7, IDS_BUTTON_INFO,   true,  false },
   { IDM_COMMENT,                8, IDS_BUTTON_COMMENT, true, true  }
 };
+
+static const int kLayout_Separator = -1;
+
+// default layout: all buttons, separator before "Comment"
+static void GetDefaultToolbarLayout(CRecordVector<int> &layout)
+{
+  layout.Clear();
+  for (unsigned i = 0; i < Z7_ARRAY_SIZE(g_Buttons); i++)
+  {
+    if (g_Buttons[i].SeparatorBefore)
+      layout.Add(kLayout_Separator);
+    layout.Add((int)i);
+  }
+}
+
+static const wchar_t * const k_Reg_FM = L"Software\\7-Zip\\FM";
+static const wchar_t * const k_Reg_ToolbarLayout = L"ToolbarLayout";
+
+// returns false, if there is no saved layout
+static bool ReadToolbarLayout(CRecordVector<int> &layout)
+{
+  layout.Clear();
+  HKEY key;
+  if (::RegOpenKeyExW(HKEY_CURRENT_USER, k_Reg_FM, 0, KEY_READ, &key) != ERROR_SUCCESS)
+    return false;
+  wchar_t buf[1024];
+  DWORD type = 0;
+  DWORD size = (DWORD)(sizeof(buf) - sizeof(wchar_t));
+  const LONG res = ::RegQueryValueExW(key, k_Reg_ToolbarLayout, NULL, &type, (LPBYTE)buf, &size);
+  ::RegCloseKey(key);
+  if (res != ERROR_SUCCESS || type != REG_SZ)
+    return false;
+  buf[size / sizeof(wchar_t)] = 0;
+
+  bool used[Z7_ARRAY_SIZE(g_Buttons)];
+  memset(used, 0, sizeof(used));
+  const wchar_t *p = buf;
+  for (;;)
+  {
+    while (*p == ' ' || *p == ',')
+      p++;
+    if (*p == 0)
+      break;
+    if (*p == '-')
+    {
+      layout.Add(kLayout_Separator);
+      p++;
+      continue;
+    }
+    if (*p < '0' || *p > '9')
+    {
+      p++;
+      continue;
+    }
+    unsigned v = 0;
+    while (*p >= '0' && *p <= '9' && v < 1000)
+      v = v * 10 + (unsigned)(*p++ - '0');
+    if (v < Z7_ARRAY_SIZE(g_Buttons) && !used[v])
+    {
+      used[v] = true;
+      layout.Add((int)v);
+    }
+  }
+  return true;
+}
+
+static void SaveToolbarLayout(const CRecordVector<int> &layout)
+{
+  UString s;
+  FOR_VECTOR (i, layout)
+  {
+    if (i != 0)
+      s += L',';
+    if (layout[i] < 0)
+      s += L'-';
+    else
+      s.Add_UInt32((UInt32)layout[i]);
+  }
+  HKEY key;
+  if (::RegCreateKeyExW(HKEY_CURRENT_USER, k_Reg_FM, 0, NULL, 0, KEY_WRITE, NULL, &key, NULL) != ERROR_SUCCESS)
+    return;
+  ::RegSetValueExW(key, k_Reg_ToolbarLayout, 0, REG_SZ,
+      (const BYTE *)(const wchar_t *)s, (DWORD)((s.Len() + 1) * sizeof(wchar_t)));
+  ::RegCloseKey(key);
+}
+
+static int FindButtonByCommand(int commandID)
+{
+  for (unsigned i = 0; i < Z7_ARRAY_SIZE(g_Buttons); i++)
+    if (g_Buttons[i].CommandID == commandID)
+      return (int)i;
+  return -1;
+}
 
 static void SetButtonText(int commandID, UString &s)
 {
@@ -403,9 +499,6 @@ static void AddButton(
     NControl::CToolBar &toolBar,
     const CButtonInfo &butInfo, bool showText)
 {
-  if (butInfo.SeparatorBefore)
-    AddSeparator(toolBar);
-
   TBBUTTON but;
   memset(&but, 0, sizeof(but));
   but.iBitmap = (int)butInfo.ImageIndex;
@@ -445,11 +538,141 @@ void CApp::ReloadToolbars()
   if (ShowArchiveToolbar || ShowStandardToolbar)
   {
     _toolbarIconSize = CreateToolbar(_window, _buttonsImageList, _logoImageList, _toolBar, LargeButtons);
-    for (unsigned i = 0; i < Z7_ARRAY_SIZE(g_Buttons); i++)
-      AddButton(_toolBar, g_Buttons[i], ShowButtonsLables);
+    CRecordVector<int> layout;
+    if (!ReadToolbarLayout(layout))
+      GetDefaultToolbarLayout(layout);
+    FillToolbarButtons(layout);
     _toolBar.AutoSize();
     CreateChevron();
   }
+}
+
+void CApp::FillToolbarButtons(const CRecordVector<int> &layout)
+{
+  if (!_toolBar)
+    return;
+  while (::SendMessage(_toolBar, TB_BUTTONCOUNT, 0, 0) > 0)
+    if (!::SendMessage(_toolBar, TB_DELETEBUTTON, 0, 0))
+      break;
+  FOR_VECTOR (i, layout)
+  {
+    const int k = layout[i];
+    if (k == kLayout_Separator)
+      AddSeparator(_toolBar);
+    else if (k >= 0 && (unsigned)k < Z7_ARRAY_SIZE(g_Buttons))
+      AddButton(_toolBar, g_Buttons[(unsigned)k], ShowButtonsLables);
+  }
+}
+
+// reads current buttons of toolbar and saves them to registry
+void CApp::SaveCurrentToolbarLayout()
+{
+  if (!_toolBar)
+    return;
+  CRecordVector<int> layout;
+  const int count = (int)::SendMessage(_toolBar, TB_BUTTONCOUNT, 0, 0);
+  for (int i = 0; i < count; i++)
+  {
+    TBBUTTON b;
+    if (!::SendMessage(_toolBar, TB_GETBUTTON, (WPARAM)i, (LPARAM)&b))
+      continue;
+    if (b.fsStyle & TBSTYLE_SEP)
+    {
+      // no separator at start, and no 2 separators together
+      if (!layout.IsEmpty() && layout.Back() != kLayout_Separator)
+        layout.Add(kLayout_Separator);
+      continue;
+    }
+    const int k = FindButtonByCommand(b.idCommand);
+    if (k >= 0)
+      layout.Add(k);
+  }
+  if (!layout.IsEmpty() && layout.Back() == kLayout_Separator)
+    layout.DeleteBack();
+  SaveToolbarLayout(layout);
+}
+
+void CApp::CustomizeToolbar()
+{
+  if (!_toolBar)
+  {
+    ShowArchiveToolbar = true;
+    SaveToolbarChanges();
+  }
+  if (_toolBar)
+    ::SendMessage(_toolBar, TB_CUSTOMIZE, 0, 0);
+}
+
+// toolbar notifications for "Customize Toolbar" dialog and Alt+drag
+bool CApp::OnToolbarAdjustNotify(LPNMHDR pnmh, LRESULT &result)
+{
+  result = 0;
+  switch (pnmh->code)
+  {
+    case TBN_QUERYINSERT:
+    case TBN_QUERYDELETE:
+      result = TRUE;
+      return true;
+
+    case TBN_GETBUTTONINFOW:
+    {
+      // list of available buttons in dialog
+      LPNMTOOLBARW tb = (LPNMTOOLBARW)pnmh;
+      if (tb->iItem < 0 || (unsigned)tb->iItem >= Z7_ARRAY_SIZE(g_Buttons))
+      {
+        result = FALSE;
+        return true;
+      }
+      const CButtonInfo &b = g_Buttons[(unsigned)tb->iItem];
+      memset(&tb->tbButton, 0, sizeof(tb->tbButton));
+      tb->tbButton.iBitmap = (int)b.ImageIndex;
+      tb->tbButton.idCommand = b.CommandID;
+      tb->tbButton.fsState = TBSTATE_ENABLED;
+      tb->tbButton.fsStyle = TBSTYLE_BUTTON | BTNS_AUTOSIZE;
+      tb->tbButton.iString = -1;
+      if (tb->pszText && tb->cchText > 0)
+      {
+        const UString s = b.GetText();
+        ::lstrcpynW(tb->pszText, s, tb->cchText);
+      }
+      result = TRUE;
+      return true;
+    }
+
+    case TBN_BEGINADJUST:
+      _toolbarAdjusting = true;
+      UpdateToolbarOverflow(0x7FFFFFFF); // show all buttons, hide chevron
+      return true;
+
+    case TBN_RESET:
+    {
+      // "Reset" button in dialog: default buttons
+      CRecordVector<int> layout;
+      GetDefaultToolbarLayout(layout);
+      FillToolbarButtons(layout);
+      return true;
+    }
+
+    case TBN_TOOLBARCHANGE:
+      if (!_toolbarAdjusting)
+      {
+        // Alt+drag of button
+        SaveCurrentToolbarLayout();
+        ::PostMessage(_window, WM_COMMAND, kMenuCmdID_Toolbar_Reload, 0);
+      }
+      return true;
+
+    case TBN_ENDADJUST:
+      _toolbarAdjusting = false;
+      SaveCurrentToolbarLayout();
+      // we can't destroy toolbar inside its own notification. So we reload it later.
+      ::PostMessage(_window, WM_COMMAND, kMenuCmdID_Toolbar_Reload, 0);
+      return true;
+
+    default:
+      break;
+  }
+  return false;
 }
 
 
@@ -498,9 +721,24 @@ void CApp::CreateChevron()
   #endif
 }
 
-static void Toolbar_ShowButton(HWND tb, int commandID, bool show)
+// by index: separators can have same ID
+static void Toolbar_ShowButton_ByIndex(HWND tb, int index, bool show)
 {
-  ::SendMessage(tb, TB_HIDEBUTTON, (WPARAM)commandID, MAKELPARAM(show ? FALSE : TRUE, 0));
+  TBBUTTONINFOW bi;
+  memset(&bi, 0, sizeof(bi));
+  bi.cbSize = sizeof(bi);
+  bi.dwMask = TBIF_BYINDEX | TBIF_STATE;
+  if (::SendMessage(tb, TB_GETBUTTONINFOW, (WPARAM)index, (LPARAM)&bi) < 0)
+    return;
+  BYTE state = bi.fsState;
+  if (show)
+    state = (BYTE)(state & ~TBSTATE_HIDDEN);
+  else
+    state = (BYTE)(state | TBSTATE_HIDDEN);
+  if (state == bi.fsState)
+    return;
+  bi.fsState = state;
+  ::SendMessage(tb, TB_SETBUTTONINFOW, (WPARAM)index, (LPARAM)&bi);
 }
 
 void CApp::UpdateToolbarOverflow(int width)
@@ -509,18 +747,15 @@ void CApp::UpdateToolbarOverflow(int width)
   if (!_toolBar)
     return;
   HWND tb = _toolBar;
-  const int count = (int)::SendMessage(tb, TB_BUTTONCOUNT, 0, 0);
+  int count = (int)::SendMessage(tb, TB_BUTTONCOUNT, 0, 0);
 
   int i;
   for (i = 0; i < count; i++)
-  {
-    TBBUTTON b;
-    if (::SendMessage(tb, TB_GETBUTTON, (WPARAM)i, (LPARAM)&b))
-      if (b.fsState & TBSTATE_HIDDEN)
-        Toolbar_ShowButton(tb, b.idCommand, true);
-  }
+    Toolbar_ShowButton_ByIndex(tb, i, true);
 
   bool overflow = false;
+  if (_toolbarAdjusting)
+    count = 0; // "Customize Toolbar" dialog is open: show all buttons
   if (count > 0)
   {
     RECT r;
@@ -559,20 +794,18 @@ void CApp::UpdateToolbarOverflow(int width)
     first--;
   }
 
-  int ids[64];
-  unsigned numIds = 0;
-  for (i = first; i < count && numIds < Z7_ARRAY_SIZE(ids); i++)
+  for (i = first; i < count; i++)
   {
     TBBUTTON b;
     if (!::SendMessage(tb, TB_GETBUTTON, (WPARAM)i, (LPARAM)&b))
       continue;
-    ids[numIds++] = b.idCommand;
     if ((b.fsStyle & TBSTYLE_SEP) == 0
         && _numHiddenToolbarCmds < Z7_ARRAY_SIZE(_hiddenToolbarCmds))
       _hiddenToolbarCmds[_numHiddenToolbarCmds++] = b.idCommand;
   }
-  for (unsigned k = 0; k < numIds; k++)
-    Toolbar_ShowButton(tb, ids[k], false);
+  // hide from the end, so indexes of other buttons are not changed
+  for (i = count - 1; i >= first; i--)
+    Toolbar_ShowButton_ByIndex(tb, i, false);
 
   if (!_chevronBar)
     return;
@@ -1378,6 +1611,9 @@ static CSysString g_ToolTipBufferSys;
 bool CApp::OnNotify(int /* ctrlID */, LPNMHDR pnmh, LRESULT &result)
 {
   result = 0;
+  if (_toolBar && pnmh->hwndFrom == (HWND)_toolBar && pnmh->code != NM_CUSTOMDRAW)
+    if (OnToolbarAdjustNotify(pnmh, result))
+      return true;
   if (pnmh->code == NM_CUSTOMDRAW && pnmh->hwndFrom
       && ((_toolBar && pnmh->hwndFrom == (HWND)_toolBar)
        || (_chevronBar && pnmh->hwndFrom == (HWND)_chevronBar)))

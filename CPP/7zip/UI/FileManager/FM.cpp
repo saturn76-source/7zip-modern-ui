@@ -895,6 +895,7 @@ static void ExecuteCommand(UINT commandID)
     case kMenuCmdID_Toolbar_Extract: g_App.ExtractArchives(); break;
     case kMenuCmdID_Toolbar_Test: g_App.TestArchives(); break;
     case kMenuCmdID_Toolbar_Chevron: g_App.ShowToolbarOverflowMenu(); break;
+    case kMenuCmdID_Toolbar_Reload: g_App.SaveToolbarChanges(); break;
   }
 }
 

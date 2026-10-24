@@ -37,3 +37,9 @@ THEME (View > Theme)
   Light, Dark, or Auto (follows Windows "Choose your app mode", switches live).
   Saved in HKCU\Software\7-Zip\FM, value "Theme" (0 light, 1 dark, 2 auto).
   Code: CPP\7zip\UI\FileManager\DarkMode.cpp
+
+CUSTOMIZE TOOLBAR
+  View > Toolbars > Customize... (or double-click empty part of toolbar):
+  choose buttons, separators and their order. "Reset" restores default buttons.
+  Alt+drag: move a button; drag it out of toolbar to remove it.
+  Saved in HKCU\Software\7-Zip\FM, value "ToolbarLayout".
