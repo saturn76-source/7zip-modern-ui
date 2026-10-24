@@ -74,6 +74,7 @@ public:
   CPanel Panels[kNumPanelsMax];
 
   NWindows::NControl::CImageList _buttonsImageList;
+  NWindows::NControl::CImageList _logoImageList;
 
   #ifdef UNDER_CE
   NWindows::NControl::CCommandBar _commandBar;
@@ -304,7 +305,7 @@ public:
   void ExtractArchives() { GetFocusedPanel().ExtractArchives(); }
   void TestArchives() { GetFocusedPanel().TestArchives(); }
 
-  void OnNotify(int ctrlID, LPNMHDR pnmh);
+  bool OnNotify(int ctrlID, LPNMHDR pnmh, LRESULT &result);
 
   UString PrevTitle;
   void RefreshTitle(bool always = false);

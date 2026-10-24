@@ -173,6 +173,13 @@ IDB_TB48       BITMAP  "../../UI/FileManager/tb48.bmp"
 IDB_TB64       BITMAP  "../../UI/FileManager/tb64.bmp"
 IDB_TB72       BITMAP  "../../UI/FileManager/tb72.bmp"
 IDB_TB96       BITMAP  "../../UI/FileManager/tb96.bmp"
+IDB_LOGO24     BITMAP  "../../UI/FileManager/logo24.bmp"
+IDB_LOGO32     BITMAP  "../../UI/FileManager/logo32.bmp"
+IDB_LOGO40     BITMAP  "../../UI/FileManager/logo40.bmp"
+IDB_LOGO48     BITMAP  "../../UI/FileManager/logo48.bmp"
+IDB_LOGO64     BITMAP  "../../UI/FileManager/logo64.bmp"
+IDB_LOGO72     BITMAP  "../../UI/FileManager/logo72.bmp"
+IDB_LOGO96     BITMAP  "../../UI/FileManager/logo96.bmp"
 
 
 STRINGTABLE

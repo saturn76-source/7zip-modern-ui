@@ -29,6 +29,14 @@
 #define IDB_TB72     175
 #define IDB_TB96     176
 
+#define IDB_LOGO24   180
+#define IDB_LOGO32   181
+#define IDB_LOGO40   182
+#define IDB_LOGO48   183
+#define IDB_LOGO64   184
+#define IDB_LOGO72   185
+#define IDB_LOGO96   186
+
 #define IDM_HASH_ALL             101
 #define IDM_CRC32                102
 #define IDM_CRC64                103

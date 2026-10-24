@@ -145,33 +145,38 @@ HRESULT CApp::CreateOnePanel(unsigned panelIndex, const UString &mainPath, const
   WinRAR-style toolbar:
     one toolbar, big colored icons with the text under each icon.
   Images are stored in 32-bit (alpha) bitmap strips: tb24.bmp ... tb96.bmp.
-  Every strip has (kNumToolbarImages) cells of size (height * 1.4) x (height).
-  Cell order in strip: Logo, Add, Extract, Test, View, Delete, Find, Wizard, Info, Repair
+  Every strip has (kNumToolbarImages) square cells of size (height) x (height).
+  Cell order in strip: Add, Extract, Test, View, Delete, Find, Wizard, Info, Repair
+  The 7ZIP logo (logo24.bmp ... logo96.bmp) is not a button:
+  it's drawn at the left side of toolbar, in the indent area.
 */
 
-static const unsigned kNumToolbarImages = 10;
+static const unsigned kNumToolbarImages = 9;
 
 struct CToolbarStripInfo
 {
   unsigned Height;
   UINT ResID;
+  UINT LogoResID;
 };
 
 static const CToolbarStripInfo g_ToolbarStrips[] =
 {
-  { 24, IDB_TB24 },
-  { 32, IDB_TB32 },
-  { 40, IDB_TB40 },
-  { 48, IDB_TB48 },
-  { 64, IDB_TB64 },
-  { 72, IDB_TB72 },
-  { 96, IDB_TB96 }
+  { 24, IDB_TB24, IDB_LOGO24 },
+  { 32, IDB_TB32, IDB_LOGO32 },
+  { 40, IDB_TB40, IDB_LOGO40 },
+  { 48, IDB_TB48, IDB_LOGO48 },
+  { 64, IDB_TB64, IDB_LOGO64 },
+  { 72, IDB_TB72, IDB_LOGO72 },
+  { 96, IDB_TB96, IDB_LOGO96 }
 };
 
-static unsigned GetToolbarCellWidth(unsigned height)
+static HBITMAP LoadAlphaBitmap(UINT resID)
 {
-  // must be same formula as used for creating of tb*.bmp files
-  return (height * 14 + 5) / 10;
+  // 32-bit bitmap with alpha channel.
+  // LR_CREATEDIBSECTION keeps the alpha channel.
+  return (HBITMAP)::LoadImage(g_hInstance, MAKEINTRESOURCE(resID),
+      IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION);
 }
 
 static unsigned GetScreenDpi()
@@ -206,8 +211,11 @@ static const CToolbarStripInfo &GetToolbarStrip(bool largeButtons)
   return g_ToolbarStrips[best];
 }
 
+static const int kLogoMargin = 10;
+
 static void CreateToolbar(HWND parent,
     NControl::CImageList &imageList,
+    NControl::CImageList &logoImageList,
     NControl::CToolBar &toolBar,
     bool largeButtons)
 {
@@ -231,26 +239,72 @@ static void CreateToolbar(HWND parent,
 
   const CToolbarStripInfo &strip = GetToolbarStrip(largeButtons);
   const unsigned h = strip.Height;
-  const unsigned w = GetToolbarCellWidth(h);
 
-  imageList.Create((int)w, (int)h, ILC_COLOR32, (int)kNumToolbarImages, 0);
-
-  // the strip is 32-bit bitmap with alpha channel.
-  // LR_CREATEDIBSECTION keeps the alpha channel.
-  HBITMAP b = (HBITMAP)::LoadImage(g_hInstance, MAKEINTRESOURCE(strip.ResID),
-      IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION);
-  if (b)
+  imageList.Create((int)h, (int)h, ILC_COLOR32, (int)kNumToolbarImages, 0);
   {
-    imageList.Add(b);
-    ::DeleteObject(b);
+    HBITMAP b = LoadAlphaBitmap(strip.ResID);
+    if (b)
+    {
+      imageList.Add(b);
+      ::DeleteObject(b);
+    }
   }
   toolBar.SetImageList(0, imageList);
 
-  // more space around buttons, like in WinRAR
+  // small space around buttons, like in WinRAR
   {
-    const unsigned pad = h / 4 + 4;
-    ::SendMessage(toolBar, TB_SETPADDING, 0, MAKELPARAM(pad, pad / 2 + 2));
+    const unsigned padX = h / 6 + 2;
+    const unsigned padY = h / 10 + 4;
+    ::SendMessage(toolBar, TB_SETPADDING, 0, MAKELPARAM(padX, padY));
   }
+
+  // logo at the left side
+  {
+    HBITMAP b = LoadAlphaBitmap(strip.LogoResID);
+    if (b)
+    {
+      BITMAP bm;
+      if (::GetObject(b, sizeof(bm), &bm) == sizeof(bm) && bm.bmWidth > 0 && bm.bmHeight > 0)
+      {
+        if (logoImageList.Create(bm.bmWidth, bm.bmHeight, ILC_COLOR32, 1, 0))
+        {
+          logoImageList.Add(b);
+          ::SendMessage(toolBar, TB_SETINDENT, (WPARAM)(bm.bmWidth + kLogoMargin * 2), 0);
+        }
+      }
+      ::DeleteObject(b);
+    }
+  }
+}
+
+// draws the logo in the indent area of toolbar (NM_CUSTOMDRAW / CDDS_POSTPAINT)
+static void DrawToolbarLogo(HWND toolBar, HIMAGELIST logoImageList, HDC dc)
+{
+  if (!logoImageList)
+    return;
+  int w = 0, h = 0;
+  if (!ImageList_GetIconSize(logoImageList, &w, &h))
+    return;
+  RECT rc;
+  if (!::GetClientRect(toolBar, &rc))
+    return;
+  // center the logo to the icons of the buttons (not to the text)
+  int y = (rc.bottom - h) / 2;
+  RECT br;
+  if (::SendMessage(toolBar, TB_GETITEMRECT, 0, (LPARAM)&br))
+  {
+    int iconW = 0, iconH = 0;
+    HIMAGELIST il = (HIMAGELIST)::SendMessage(toolBar, TB_GETIMAGELIST, 0, 0);
+    if (il && ImageList_GetIconSize(il, &iconW, &iconH))
+    {
+      const DWORD pad = (DWORD)::SendMessage(toolBar, TB_GETPADDING, 0, 0);
+      const int iconTop = br.top + (int)HIWORD(pad) / 2;
+      y = iconTop + (iconH - h) / 2;
+    }
+  }
+  if (y < 0)
+    y = 0;
+  ImageList_Draw(logoImageList, 0, dc, kLogoMargin, y, ILD_NORMAL);
 }
 
 
@@ -259,7 +313,7 @@ struct CButtonInfo
   int CommandID;
   unsigned ImageIndex;  // cell index in tb*.bmp strip
   UINT StringResID;
-  bool ShowText;        // false for logo button
+  bool ShowText;
   bool SeparatorBefore;
 
   UString GetText() const { return LangString(StringResID); }
@@ -273,16 +327,15 @@ struct CButtonInfo
 
 static const CButtonInfo g_Buttons[] =
 {
-  { IDM_ABOUT,                  0, IDS_BUTTON_ABOUT,  false, false },
-  { kMenuCmdID_Toolbar_Add,     1, IDS_ADD,           true,  false },
-  { kMenuCmdID_Toolbar_Extract, 2, IDS_EXTRACT,       true,  false },
-  { kMenuCmdID_Toolbar_Test,    3, IDS_TEST,          true,  false },
-  { IDM_FILE_VIEW,              4, IDS_BUTTON_VIEW,   true,  false },
-  { IDM_DELETE,                 5, IDS_BUTTON_DELETE, true,  false },
-  { IDM_SELECT,                 6, IDS_BUTTON_FIND,   true,  false },
-  { IDM_OPTIONS,                7, IDS_BUTTON_WIZARD, true,  false },
-  { IDM_PROPERTIES,             8, IDS_BUTTON_INFO,   true,  false },
-  { IDM_HASH_ALL,               9, IDS_BUTTON_REPAIR, true,  true  }
+  { kMenuCmdID_Toolbar_Add,     0, IDS_ADD,           true,  false },
+  { kMenuCmdID_Toolbar_Extract, 1, IDS_EXTRACT,       true,  false },
+  { kMenuCmdID_Toolbar_Test,    2, IDS_TEST,          true,  false },
+  { IDM_FILE_VIEW,              3, IDS_BUTTON_VIEW,   true,  false },
+  { IDM_DELETE,                 4, IDS_BUTTON_DELETE, true,  false },
+  { IDM_SELECT,                 5, IDS_BUTTON_FIND,   true,  false },
+  { IDM_OPTIONS,                6, IDS_BUTTON_WIZARD, true,  false },
+  { IDM_PROPERTIES,             7, IDS_BUTTON_INFO,   true,  false },
+  { IDM_HASH_ALL,               8, IDS_BUTTON_REPAIR, true,  true  }
 };
 
 static void SetButtonText(int commandID, UString &s)
@@ -344,12 +397,13 @@ static void AddButton(
 void CApp::ReloadToolbars()
 {
   _buttonsImageList.Destroy();
+  _logoImageList.Destroy();
   _toolBar.Destroy();
 
   // there is only one toolbar now.
   if (ShowArchiveToolbar || ShowStandardToolbar)
   {
-    CreateToolbar(_window, _buttonsImageList, _toolBar, LargeButtons);
+    CreateToolbar(_window, _buttonsImageList, _logoImageList, _toolBar, LargeButtons);
     for (unsigned i = 0; i < Z7_ARRAY_SIZE(g_Buttons); i++)
       AddButton(_toolBar, g_Buttons[i], ShowButtonsLables);
     _toolBar.AutoSize();
@@ -1016,8 +1070,25 @@ int CApp::GetFocusedPanelIndex() const
 static UString g_ToolTipBuffer;
 static CSysString g_ToolTipBufferSys;
 
-void CApp::OnNotify(int /* ctrlID */, LPNMHDR pnmh)
+bool CApp::OnNotify(int /* ctrlID */, LPNMHDR pnmh, LRESULT &result)
 {
+  result = 0;
+  if (_toolBar && pnmh->hwndFrom == (HWND)_toolBar && pnmh->code == NM_CUSTOMDRAW)
+  {
+    LPNMTBCUSTOMDRAW cd = (LPNMTBCUSTOMDRAW)pnmh;
+    if (cd->nmcd.dwDrawStage == CDDS_PREPAINT)
+    {
+      result = CDRF_NOTIFYPOSTPAINT;
+      return true;
+    }
+    if (cd->nmcd.dwDrawStage == CDDS_POSTPAINT)
+    {
+      DrawToolbarLogo(_toolBar, _logoImageList, cd->nmcd.hdc);
+      result = CDRF_DODEFAULT;
+      return true;
+    }
+    return false;
+  }
   {
     if (pnmh->code == TTN_GETDISPINFO)
     {
@@ -1027,7 +1098,7 @@ void CApp::OnNotify(int /* ctrlID */, LPNMHDR pnmh)
       SetButtonText((int)info->hdr.idFrom, g_ToolTipBuffer);
       g_ToolTipBufferSys = GetSystemString(g_ToolTipBuffer);
       info->lpszText = g_ToolTipBufferSys.Ptr_non_const();
-      return;
+      return true;
     }
     #ifndef _UNICODE
     if (pnmh->code == TTN_GETDISPINFOW)
@@ -1037,10 +1108,11 @@ void CApp::OnNotify(int /* ctrlID */, LPNMHDR pnmh)
       g_ToolTipBuffer.Empty();
       SetButtonText((int)info->hdr.idFrom, g_ToolTipBuffer);
       info->lpszText = g_ToolTipBuffer.Ptr_non_const();
-      return;
+      return true;
     }
     #endif
   }
+  return false;
 }
 
 void CApp::RefreshTitle(bool always)

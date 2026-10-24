@@ -1146,7 +1146,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     
     case WM_NOTIFY:
     {
-      g_App.OnNotify((int)wParam, (LPNMHDR)lParam);
+      LRESULT result = 0;
+      if (g_App.OnNotify((int)wParam, (LPNMHDR)lParam, result))
+        return result;
       break;
     }
     
