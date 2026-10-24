@@ -33,6 +33,8 @@
 #include "resource.h"
 
 #include "App.h"
+#include "DarkMode.h"
+#include "../../../Windows/Control/Dialog.h"
 #include "FormatUtils.h"
 #include "LangUtils.h"
 #include "MyLoadMenu.h"
@@ -736,6 +738,9 @@ static int WINAPI WinMain2(int nCmdShow)
 
   g_App.ReloadLangItems();
 
+  NDarkMode::Init();
+  NWindows::NControl::g_DialogHook = NDarkMode::DialogHook;
+
   MSG msg;
   if (!InitInstance (nCmdShow))
     return FALSE;
@@ -895,8 +900,20 @@ static void ExecuteCommand(UINT commandID)
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+  {
+    // dark mode: menu bar and background
+    LRESULT darkResult = 0;
+    if (NDarkMode::OnMainWindowMessage(hWnd, message, wParam, lParam, darkResult))
+      return darkResult;
+  }
   switch (message)
   {
+    case WM_SETTINGCHANGE:
+      // "Auto" theme: Windows app mode (light / dark) was changed
+      if (NDarkMode::IsThemeSettingChange(lParam) && NDarkMode::UpdateFromSystem())
+        g_App.ApplyTheme();
+      break;
+
     case WM_COMMAND:
     {
       unsigned wmId    = LOWORD(wParam);

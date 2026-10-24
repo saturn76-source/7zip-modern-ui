@@ -32,6 +32,12 @@ APIENTRY MyProperyPageProcedure(HWND dialogHWND, UINT message, WPARAM wParam, LP
     return FALSE;
   if (message == WM_INITDIALOG)
     dialog->Attach(dialogHWND);
+  if (g_DialogHook)
+  {
+    LRESULT hookResult = 0;
+    if (g_DialogHook(dialogHWND, message, wParam, lParam, hookResult))
+      return (INT_PTR)hookResult;
+  }
   try { return BoolToBOOL(dialog->OnMessage(message, wParam, lParam)); }
   catch(...) { return TRUE; }
 }

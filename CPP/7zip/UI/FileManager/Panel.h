@@ -432,6 +432,7 @@ public:
   NWindows::NControl::CToolBar _headerToolBar;
   void SetBigUpButtonImage();
   void FindFiles();
+  void ApplyTheme();
   NWindows::NControl::
     #ifdef UNDER_CE
     CComboBox

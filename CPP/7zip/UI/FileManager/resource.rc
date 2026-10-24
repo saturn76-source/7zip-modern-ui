@@ -123,6 +123,12 @@ BEGIN
       MENUITEM "Large Buttons",             IDM_VIEW_TOOLBARS_LARGE_BUTTONS
       MENUITEM "Show Buttons Text",         IDM_VIEW_TOOLBARS_SHOW_BUTTONS_TEXT
     END
+    POPUP "T&heme" MY_MENUITEM_ID(IDM_VIEW_THEME)
+    BEGIN
+      MENUITEM "&Light",                    IDM_THEME_LIGHT
+      MENUITEM "&Dark",                     IDM_THEME_DARK
+      MENUITEM "&Auto (as Windows)",        IDM_THEME_AUTO
+    END
     MENUITEM "Open Root Folder\t\\",        IDM_OPEN_ROOT_FOLDER
     MENUITEM "Up One Level\tBackspace",     IDM_OPEN_PARENT_FOLDER
     MENUITEM "Folders History...\tAlt+F12", IDM_FOLDERS_HISTORY

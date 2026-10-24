@@ -32,3 +32,8 @@ BUTTONS (edit table g_Buttons[] in App.cpp to change them)
 
 View > Toolbars: "Toolbar" shows/hides it, "Large Buttons" switches 48/32 px icons,
 "Show Buttons Text" shows/hides the labels. Icon size also follows Windows DPI scaling.
+
+THEME (View > Theme)
+  Light, Dark, or Auto (follows Windows "Choose your app mode", switches live).
+  Saved in HKCU\Software\7-Zip\FM, value "Theme" (0 light, 1 dark, 2 auto).
+  Code: CPP\7zip\UI\FileManager\DarkMode.cpp

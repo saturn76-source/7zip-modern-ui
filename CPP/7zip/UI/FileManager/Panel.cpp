@@ -29,6 +29,7 @@
 #include "FormatUtils.h"
 #include "LangUtils.h"
 #include "Panel.h"
+#include "DarkMode.h"
 #include "RootFolder.h"
 
 #include "PropertyNameRes.h"
@@ -652,6 +653,20 @@ void CPanel::SetBigUpButtonImage()
   ::SendMessage(_headerToolBar, TB_SETPADDING, 0, MAKELPARAM(4, 4));
   ::SendMessage(_headerToolBar, TB_SETBUTTONSIZE, 0, MAKELPARAM(size + 4, size + 4));
   ::SendMessage(_headerToolBar, TB_AUTOSIZE, 0, 0);
+}
+
+void CPanel::ApplyTheme()
+{
+  if (!(HWND)*this)
+    return;
+  NDarkMode::ApplyToListView(_listView);
+  NDarkMode::ApplyToComboBoxEx(_headerComboBox);
+  NDarkMode::ApplyToStatusBar(_statusBar);
+  NDarkMode::ApplyToBkWindow(*this);
+  if (_headerReBar)
+    NDarkMode::ApplyToBkWindow(_headerReBar);
+  if (_headerToolBar)
+    NDarkMode::ApplyToBkWindow(_headerToolBar);
 }
 
 void CPanel::OnDestroy()

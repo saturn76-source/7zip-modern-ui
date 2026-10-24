@@ -12,6 +12,7 @@ LIBS = $(LIBS) delayimp.lib
 
 FM_OBJS = \
   $O\App.obj \
+  $O\DarkMode.obj \
   $O\BrowseDialog.obj \
   $O\BrowseDialog2.obj \
   $O\ClassDefs.obj \

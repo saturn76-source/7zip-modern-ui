@@ -13,6 +13,7 @@
 
 #include "AboutDialog.h"
 #include "App.h"
+#include "DarkMode.h"
 #include "BrowseDialog2.h"
 #include "HelpUtils.h"
 #include "LangUtils.h"
@@ -433,6 +434,12 @@ void OnMenuActivating(HWND /* hWnd */, HMENU hMenu, int position)
     menu.CheckItemByID(IDM_VIEW_STANDARD_TOOLBAR, g_App.ShowStandardToolbar);
     menu.CheckItemByID(IDM_VIEW_TOOLBARS_LARGE_BUTTONS, g_App.LargeButtons);
     menu.CheckItemByID(IDM_VIEW_TOOLBARS_SHOW_BUTTONS_TEXT, g_App.ShowButtonsLables);
+    {
+      const NDarkMode::EThemeMode mode = NDarkMode::GetMode();
+      menu.CheckItemByID(IDM_THEME_LIGHT, mode == NDarkMode::k_Theme_Light);
+      menu.CheckItemByID(IDM_THEME_DARK,  mode == NDarkMode::k_Theme_Dark);
+      menu.CheckItemByID(IDM_THEME_AUTO,  mode == NDarkMode::k_Theme_Auto);
+    }
     menu.CheckItemByID(IDM_VIEW_AUTO_REFRESH, g_App.Get_AutoRefresh_Mode());
     // menu.CheckItemByID(IDM_VIEW_SHOW_STREAMS, g_App.Get_ShowNtfsStrems_Mode());
     // menu.CheckItemByID(IDM_VIEW_SHOW_DELETED, g_App.ShowDeletedFiles);
@@ -840,6 +847,9 @@ bool OnMenuCommand(HWND hWnd, unsigned id)
       g_App.InvertSelection();
       g_App.Refresh_StatusBar();
       break;
+    case IDM_THEME_LIGHT: g_App.SetThemeMode(NDarkMode::k_Theme_Light); break;
+    case IDM_THEME_DARK:  g_App.SetThemeMode(NDarkMode::k_Theme_Dark); break;
+    case IDM_THEME_AUTO:  g_App.SetThemeMode(NDarkMode::k_Theme_Auto); break;
     case IDM_FIND_FILES:
       g_App.FindFiles();
       break;

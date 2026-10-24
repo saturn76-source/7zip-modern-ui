@@ -18,6 +18,8 @@ extern bool g_IsNT;
 namespace NWindows {
 namespace NControl {
 
+Func_DialogHook g_DialogHook = NULL;
+
 static
 #ifdef Z7_OLD_WIN_SDK
   BOOL
@@ -35,6 +37,13 @@ DialogProcedure(HWND dialogHWND, UINT message, WPARAM wParam, LPARAM lParam)
     return FALSE;
   if (message == WM_INITDIALOG)
     dialog->Attach(dialogHWND);
+
+  if (g_DialogHook)
+  {
+    LRESULT hookResult = 0;
+    if (g_DialogHook(dialogHWND, message, wParam, lParam, hookResult))
+      return (INT_PTR)hookResult;
+  }
 
   /* MSDN: The dialog box procedure should return
        TRUE  - if it processed the message

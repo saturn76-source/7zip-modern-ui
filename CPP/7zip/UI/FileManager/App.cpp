@@ -18,6 +18,15 @@
 */
 
 #include "App.h"
+#include "DarkMode.h"
+
+// these toolbar custom draw flags require (_WIN32_IE >= 0x0600) in commctrl.h
+#ifndef TBCDRF_USECDCOLORS
+#define TBCDRF_USECDCOLORS 0x00800000
+#endif
+#ifndef TBCDRF_HILITEHOTTRACK
+#define TBCDRF_HILITEHOTTRACK 0x00020000
+#endif
 #include "CopyDialog.h"
 #include "ExtractCallback.h"
 #include "FormatUtils.h"
@@ -134,10 +143,31 @@ HRESULT CApp::CreateOnePanel(unsigned panelIndex, const UString &mainPath, const
   
   const unsigned id = 1000 + 100 * panelIndex; // check it
 
-  return Panels[panelIndex].Create(_window, _window,
+  const HRESULT res = Panels[panelIndex].Create(_window, _window,
       id, path, arcFormat, &m_PanelCallbackImp[panelIndex], &AppState,
       needOpenArc,
       openRes);
+  Panels[panelIndex].ApplyTheme();
+  return res;
+}
+
+void CApp::ApplyTheme()
+{
+  if (!_window)
+    return;
+  NDarkMode::ApplyToMainWindow(_window);
+  for (unsigned i = 0; i < kNumPanelsMax; i++)
+    if (Panels[i].PanelCreated)
+      Panels[i].ApplyTheme();
+  ::RedrawWindow(_window, NULL, NULL,
+      RDW_INVALIDATE | RDW_ERASE | RDW_FRAME | RDW_ALLCHILDREN | RDW_UPDATENOW);
+}
+
+void CApp::SetThemeMode(int mode)
+{
+  NDarkMode::SetMode((NDarkMode::EThemeMode)mode);
+  // ApplyTheme() also for same dark/light state: it's cheap and it refreshes everything
+  ApplyTheme();
 }
 
 
@@ -695,6 +725,7 @@ void CApp::SaveToolbarChanges()
 HRESULT CApp::Create(HWND hwnd, const UString &mainPath, const UString &arcFormat, int xSizes[2], bool needOpenArc, COpenResult &openRes)
 {
   _window.Attach(hwnd);
+  NDarkMode::ApplyToMainWindow(_window);
 
   #ifdef UNDER_CE
   _commandBar.Create(g_hInstance, hwnd, 1);
@@ -1347,17 +1378,41 @@ static CSysString g_ToolTipBufferSys;
 bool CApp::OnNotify(int /* ctrlID */, LPNMHDR pnmh, LRESULT &result)
 {
   result = 0;
-  if (_toolBar && pnmh->hwndFrom == (HWND)_toolBar && pnmh->code == NM_CUSTOMDRAW)
+  if (pnmh->code == NM_CUSTOMDRAW && pnmh->hwndFrom
+      && ((_toolBar && pnmh->hwndFrom == (HWND)_toolBar)
+       || (_chevronBar && pnmh->hwndFrom == (HWND)_chevronBar)))
   {
     LPNMTBCUSTOMDRAW cd = (LPNMTBCUSTOMDRAW)pnmh;
+    const bool isMain = (pnmh->hwndFrom == (HWND)_toolBar);
+    const bool dark = NDarkMode::IsDark();
     if (cd->nmcd.dwDrawStage == CDDS_PREPAINT)
     {
-      result = CDRF_NOTIFYPOSTPAINT;
+      if (dark)
+      {
+        RECT rc;
+        ::GetClientRect(pnmh->hwndFrom, &rc);
+        ::FillRect(cd->nmcd.hdc, &rc, NDarkMode::Brush_Bk());
+      }
+      result = (isMain ? CDRF_NOTIFYPOSTPAINT : 0) | (dark ? CDRF_NOTIFYITEMDRAW : 0);
+      return true;
+    }
+    if (cd->nmcd.dwDrawStage == CDDS_ITEMPREPAINT)
+    {
+      if (!dark)
+        return false;
+      cd->clrText = NDarkMode::Color_Text();
+      cd->clrTextHighlight = NDarkMode::Color_Text();
+      cd->clrBtnFace = NDarkMode::Color_Bk();
+      cd->clrHighlightHotTrack = NDarkMode::Color_Hot();
+      cd->nStringBkMode = TRANSPARENT;
+      cd->nHLStringBkMode = TRANSPARENT;
+      result = TBCDRF_USECDCOLORS | TBCDRF_HILITEHOTTRACK;
       return true;
     }
     if (cd->nmcd.dwDrawStage == CDDS_POSTPAINT)
     {
-      DrawToolbarLogo(_toolBar, _logoImageList, cd->nmcd.hdc);
+      if (isMain)
+        DrawToolbarLogo(_toolBar, _logoImageList, cd->nmcd.hdc);
       result = CDRF_DODEFAULT;
       return true;
     }

@@ -316,6 +316,8 @@ public:
 
   void AddToArchive() { GetFocusedPanel().AddToArchive(); }
   void FindFiles() { GetFocusedPanel().FindFiles(); }
+  void ApplyTheme();
+  void SetThemeMode(int mode);
   void ExtractArchives() { GetFocusedPanel().ExtractArchives(); }
   void TestArchives() { GetFocusedPanel().TestArchives(); }
 

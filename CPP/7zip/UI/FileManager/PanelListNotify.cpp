@@ -15,6 +15,7 @@
 
 #include "App.h"
 #include "Panel.h"
+#include "DarkMode.h"
 #include "FormatUtils.h"
 
 using namespace NWindows;
@@ -718,7 +719,7 @@ bool CPanel::OnCustomDraw(LPNMLVCUSTOMDRAW lplvcd, LRESULT &result)
     if (_mySelectMode)
     {
       if (realIndex != kParentIndex && _selectedStatusVector[realIndex])
-       lplvcd->clrTextBk = RGB(255, 192, 192);
+       lplvcd->clrTextBk = NDarkMode::Color_SelectMark();
     }
 
     if (_markDeletedItems && _thereAreDeletedItems)

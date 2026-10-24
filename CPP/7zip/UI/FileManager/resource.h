@@ -91,6 +91,10 @@
 #define IDM_LINK                 558
 #define IDM_ALT_STREAMS          559
 #define IDM_FIND_FILES           570
+#define IDM_THEME_LIGHT          571
+#define IDM_THEME_DARK           572
+#define IDM_THEME_AUTO           573
+#define IDM_VIEW_THEME           574
 
 #define IDM_VER_EDIT             580
 #define IDM_VER_COMMIT           581

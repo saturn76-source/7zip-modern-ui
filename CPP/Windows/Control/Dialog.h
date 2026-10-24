@@ -8,6 +8,11 @@
 namespace NWindows {
 namespace NControl {
 
+// optional hook for all dialogs (7-Zip FM uses it for dark mode).
+// it's called before dialog's own processing. If it returns true, (result) is returned.
+typedef bool (*Func_DialogHook)(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam, LRESULT &result);
+extern Func_DialogHook g_DialogHook;
+
 #ifndef IDCONTINUE
 #define IDCONTINUE 11
 #endif
