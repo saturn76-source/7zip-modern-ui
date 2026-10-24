@@ -262,6 +262,8 @@ public:
   void ReloadToolbars();
   void FillToolbarButtons(const CRecordVector<int> &layout);
   void SaveCurrentToolbarLayout();
+  void GetCurrentToolbarLayout(CRecordVector<int> &layout);
+  void ShowToolbarContextMenu();
   void CustomizeToolbar();
   bool OnToolbarAdjustNotify(LPNMHDR pnmh, LRESULT &result);
   bool _toolbarAdjusting;

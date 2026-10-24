@@ -564,12 +564,12 @@ void CApp::FillToolbarButtons(const CRecordVector<int> &layout)
   }
 }
 
-// reads current buttons of toolbar and saves them to registry
-void CApp::SaveCurrentToolbarLayout()
+// reads current buttons of toolbar
+void CApp::GetCurrentToolbarLayout(CRecordVector<int> &layout)
 {
+  layout.Clear();
   if (!_toolBar)
     return;
-  CRecordVector<int> layout;
   const int count = (int)::SendMessage(_toolBar, TB_BUTTONCOUNT, 0, 0);
   for (int i = 0; i < count; i++)
   {
@@ -589,7 +589,90 @@ void CApp::SaveCurrentToolbarLayout()
   }
   if (!layout.IsEmpty() && layout.Back() == kLayout_Separator)
     layout.DeleteBack();
+}
+
+// reads current buttons of toolbar and saves them to registry
+void CApp::SaveCurrentToolbarLayout()
+{
+  if (!_toolBar)
+    return;
+  CRecordVector<int> layout;
+  GetCurrentToolbarLayout(layout);
   SaveToolbarLayout(layout);
+}
+
+static UString GetMainMenuText(HWND wnd, UINT id)
+{
+  wchar_t buf[256];
+  buf[0] = 0;
+  const HMENU menu = ::GetMenu(wnd);
+  if (menu)
+    ::GetMenuStringW(menu, id, buf, (int)Z7_ARRAY_SIZE(buf), MF_BYCOMMAND);
+  return UString(buf);
+}
+
+/*
+  Right click on toolbar:
+    Large Buttons, Show Buttons Text, Customize..., Reset
+  (buttons are selected in "Customize Toolbar" dialog)
+*/
+void CApp::ShowToolbarContextMenu()
+{
+  if (!_toolBar)
+    return;
+  const unsigned kCmd_Large = 100;
+  const unsigned kCmd_Text = 101;
+  const unsigned kCmd_Customize = 102;
+  const unsigned kCmd_Reset = 103;
+
+  HMENU menu = ::CreatePopupMenu();
+  if (!menu)
+    return;
+  {
+    UString s = GetMainMenuText(_window, IDM_VIEW_TOOLBARS_LARGE_BUTTONS);
+    if (s.IsEmpty())
+      s = "Large Buttons";
+    ::AppendMenuW(menu, MF_STRING | (LargeButtons ? MF_CHECKED : MF_UNCHECKED), kCmd_Large, s);
+  }
+  {
+    UString s = GetMainMenuText(_window, IDM_VIEW_TOOLBARS_SHOW_BUTTONS_TEXT);
+    if (s.IsEmpty())
+      s = "Show Buttons Text";
+    ::AppendMenuW(menu, MF_STRING | (ShowButtonsLables ? MF_CHECKED : MF_UNCHECKED), kCmd_Text, s);
+  }
+  ::AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
+  {
+    UString s = GetMainMenuText(_window, IDM_VIEW_TOOLBARS_CUSTOMIZE);
+    if (s.IsEmpty())
+      s = "&Customize...";
+    ::AppendMenuW(menu, MF_STRING, kCmd_Customize, s);
+  }
+  ::AppendMenuW(menu, MF_STRING, kCmd_Reset, L"&Reset");
+
+  POINT pt;
+  ::GetCursorPos(&pt);
+  const unsigned cmd = (unsigned)::TrackPopupMenu(menu,
+      TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_NONOTIFY,
+      pt.x, pt.y, 0, _window, NULL);
+  ::DestroyMenu(menu);
+  if (cmd == 0)
+    return;
+
+  // we are inside notification from toolbar, so we can't destroy toolbar here.
+  // So we post commands, and toolbar is rebuilt later.
+  if (cmd == kCmd_Large)
+    ::PostMessage(_window, WM_COMMAND, IDM_VIEW_TOOLBARS_LARGE_BUTTONS, 0);
+  else if (cmd == kCmd_Text)
+    ::PostMessage(_window, WM_COMMAND, IDM_VIEW_TOOLBARS_SHOW_BUTTONS_TEXT, 0);
+  else if (cmd == kCmd_Customize)
+    ::PostMessage(_window, WM_COMMAND, IDM_VIEW_TOOLBARS_CUSTOMIZE, 0);
+  else if (cmd == kCmd_Reset)
+  {
+    CRecordVector<int> layout;
+    GetDefaultToolbarLayout(layout);
+    SaveToolbarLayout(layout);
+    ::PostMessage(_window, WM_COMMAND, kMenuCmdID_Toolbar_Reload, 0);
+  }
 }
 
 void CApp::CustomizeToolbar()
@@ -612,6 +695,11 @@ bool CApp::OnToolbarAdjustNotify(LPNMHDR pnmh, LRESULT &result)
     case TBN_QUERYINSERT:
     case TBN_QUERYDELETE:
       result = TRUE;
+      return true;
+
+    case NM_RCLICK:
+      ShowToolbarContextMenu();
+      result = TRUE; // we processed it
       return true;
 
     case TBN_GETBUTTONINFOW:
@@ -1614,6 +1702,12 @@ bool CApp::OnNotify(int /* ctrlID */, LPNMHDR pnmh, LRESULT &result)
   if (_toolBar && pnmh->hwndFrom == (HWND)_toolBar && pnmh->code != NM_CUSTOMDRAW)
     if (OnToolbarAdjustNotify(pnmh, result))
       return true;
+  if (_chevronBar && pnmh->hwndFrom == (HWND)_chevronBar && pnmh->code == NM_RCLICK)
+  {
+    ShowToolbarContextMenu();
+    result = TRUE;
+    return true;
+  }
   if (pnmh->code == NM_CUSTOMDRAW && pnmh->hwndFrom
       && ((_toolBar && pnmh->hwndFrom == (HWND)_toolBar)
        || (_chevronBar && pnmh->hwndFrom == (HWND)_chevronBar)))
