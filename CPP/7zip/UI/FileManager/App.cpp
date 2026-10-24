@@ -224,7 +224,7 @@ static void CreateToolbar(HWND parent,
       | WS_VISIBLE
       | TBSTYLE_FLAT
       | TBSTYLE_TOOLTIPS
-      | TBSTYLE_WRAPABLE
+      // | TBSTYLE_WRAPABLE  // one row only (like WinRAR): buttons are not moved to next row
       // | TBSTYLE_AUTOSIZE
       // | CCS_NORESIZE
       #ifdef UNDER_CE
