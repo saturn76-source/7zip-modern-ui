@@ -27,6 +27,8 @@ enum
   kMenuCmdID_Toolbar_Add = kMenuCmdID_Toolbar_Start,
   kMenuCmdID_Toolbar_Extract,
   kMenuCmdID_Toolbar_Test,
+  kMenuCmdID_Toolbar_Chevron,   // ">>" (chevron) button: menu with buttons that don't fit
+  kMenuCmdID_Toolbar_Separator, // ID of separator in toolbar (it doesn't send commands)
   kMenuCmdID_Toolbar_End
 };
 
@@ -75,6 +77,11 @@ public:
 
   NWindows::NControl::CImageList _buttonsImageList;
   NWindows::NControl::CImageList _logoImageList;
+  NWindows::NControl::CToolBar _chevronBar;
+  HFONT _chevronFont;
+  unsigned _toolbarIconSize;
+  int _hiddenToolbarCmds[32];
+  unsigned _numHiddenToolbarCmds;
 
   #ifdef UNDER_CE
   NWindows::NControl::CCommandBar _commandBar;
@@ -94,6 +101,9 @@ public:
     NumPanels(2),
     LastFocusedPanel(0)
   {
+    _toolbarIconSize = 48;
+    _numHiddenToolbarCmds = 0;
+    _chevronFont = NULL;
     SetPanels_AutoRefresh_Mode();
   }
 
@@ -248,6 +258,9 @@ public:
   void SetBookmark(unsigned index) { GetFocusedPanel().SetBookmark(index); }
 
   void ReloadToolbars();
+  void CreateChevron();
+  void UpdateToolbarOverflow(int width);
+  void ShowToolbarOverflowMenu();
   void ReadToolbar()
   {
     const UInt32 mask = ReadToolbarsMask();

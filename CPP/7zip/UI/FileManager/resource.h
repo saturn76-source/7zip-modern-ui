@@ -28,6 +28,9 @@
 #define IDB_TB64     174
 #define IDB_TB72     175
 #define IDB_TB96     176
+// small images for ">>" (chevron) menu
+#define IDB_TB16     177
+#define IDB_TB20     178
 
 #define IDB_LOGO24   180
 #define IDB_LOGO32   181

@@ -213,7 +213,7 @@ static const CToolbarStripInfo &GetToolbarStrip(bool largeButtons)
 
 static const int kLogoMargin = 10;
 
-static void CreateToolbar(HWND parent,
+static unsigned CreateToolbar(HWND parent,
     NControl::CImageList &imageList,
     NControl::CImageList &logoImageList,
     NControl::CToolBar &toolBar,
@@ -222,6 +222,7 @@ static void CreateToolbar(HWND parent,
   toolBar.Attach(::CreateWindowEx(0, TOOLBARCLASSNAME, NULL, 0
       | WS_CHILD
       | WS_VISIBLE
+      | WS_CLIPSIBLINGS   // don't paint over the ">>" (chevron) button
       | TBSTYLE_FLAT
       | TBSTYLE_TOOLTIPS
       // | TBSTYLE_WRAPABLE  // one row only (like WinRAR): buttons are not moved to next row
@@ -275,6 +276,7 @@ static void CreateToolbar(HWND parent,
       ::DeleteObject(b);
     }
   }
+  return h;
 }
 
 // draws the logo in the indent area of toolbar (NM_CUSTOMDRAW / CDDS_POSTPAINT)
@@ -356,7 +358,7 @@ static void AddSeparator(NControl::CToolBar &toolBar)
   TBBUTTON but;
   memset(&but, 0, sizeof(but));
   but.iBitmap = 8; // separator width
-  but.idCommand = 0;
+  but.idCommand = kMenuCmdID_Toolbar_Separator;
   but.fsState = TBSTATE_ENABLED;
   but.fsStyle = TBSTYLE_SEP;
   but.iString = -1;
@@ -398,16 +400,286 @@ void CApp::ReloadToolbars()
 {
   _buttonsImageList.Destroy();
   _logoImageList.Destroy();
+  _chevronBar.Destroy();
+  if (_chevronFont)
+  {
+    ::DeleteObject(_chevronFont);
+    _chevronFont = NULL;
+  }
   _toolBar.Destroy();
+  _numHiddenToolbarCmds = 0;
 
   // there is only one toolbar now.
   if (ShowArchiveToolbar || ShowStandardToolbar)
   {
-    CreateToolbar(_window, _buttonsImageList, _logoImageList, _toolBar, LargeButtons);
+    _toolbarIconSize = CreateToolbar(_window, _buttonsImageList, _logoImageList, _toolBar, LargeButtons);
     for (unsigned i = 0; i < Z7_ARRAY_SIZE(g_Buttons); i++)
       AddButton(_toolBar, g_Buttons[i], ShowButtonsLables);
     _toolBar.AutoSize();
+    CreateChevron();
   }
+}
+
+
+/*
+  ">>" (chevron) button:
+  if the window is too narrow for all toolbar buttons, the buttons that don't fit
+  are hidden, and small ">>" button is shown at the right end of toolbar.
+  Click on it shows popup menu with hidden buttons.
+  The chevron is separate small toolbar window over the right end of main toolbar.
+*/
+
+void CApp::CreateChevron()
+{
+  _chevronBar.Attach(::CreateWindowEx(0, TOOLBARCLASSNAME, NULL, 0
+      | WS_CHILD
+      | WS_CLIPSIBLINGS
+      | TBSTYLE_FLAT
+      | TBSTYLE_LIST
+      | CCS_NORESIZE
+      | CCS_NOPARENTALIGN
+      | CCS_NODIVIDER
+      ,0,0,0,0, _window, NULL, g_hInstance, NULL));
+  if (!_chevronBar)
+    return;
+  _chevronBar.ButtonStructSize();
+  ::SendMessage(_chevronBar, TB_SETBITMAPSIZE, 0, MAKELPARAM(1, 1));
+
+  // big bold font, so the chevron is easy to see
+  _chevronFont = ::CreateFontW(-(int)(_toolbarIconSize * 2 / 3), 0, 0, 0, FW_BOLD,
+      FALSE, FALSE, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS,
+      CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_SWISS, L"Segoe UI");
+  if (_chevronFont)
+    ::SendMessage(_chevronBar, WM_SETFONT, (WPARAM)_chevronFont, FALSE);
+
+  TBBUTTON but;
+  memset(&but, 0, sizeof(but));
+  but.iBitmap = I_IMAGENONE;
+  but.idCommand = kMenuCmdID_Toolbar_Chevron;
+  but.fsState = TBSTATE_ENABLED;
+  but.fsStyle = TBSTYLE_BUTTON;
+  but.iString = (INT_PTR)(LPCWSTR)L"\x00BB";
+  #ifdef _UNICODE
+  _chevronBar.AddButton(1, &but);
+  #else
+  _chevronBar.AddButtonW(1, &but);
+  #endif
+}
+
+static void Toolbar_ShowButton(HWND tb, int commandID, bool show)
+{
+  ::SendMessage(tb, TB_HIDEBUTTON, (WPARAM)commandID, MAKELPARAM(show ? FALSE : TRUE, 0));
+}
+
+void CApp::UpdateToolbarOverflow(int width)
+{
+  _numHiddenToolbarCmds = 0;
+  if (!_toolBar)
+    return;
+  HWND tb = _toolBar;
+  const int count = (int)::SendMessage(tb, TB_BUTTONCOUNT, 0, 0);
+
+  int i;
+  for (i = 0; i < count; i++)
+  {
+    TBBUTTON b;
+    if (::SendMessage(tb, TB_GETBUTTON, (WPARAM)i, (LPARAM)&b))
+      if (b.fsState & TBSTATE_HIDDEN)
+        Toolbar_ShowButton(tb, b.idCommand, true);
+  }
+
+  bool overflow = false;
+  if (count > 0)
+  {
+    RECT r;
+    if (::SendMessage(tb, TB_GETITEMRECT, (WPARAM)(count - 1), (LPARAM)&r))
+      overflow = (r.right > width);
+  }
+
+  if (!overflow)
+  {
+    if (_chevronBar)
+      _chevronBar.Show(SW_HIDE);
+    return;
+  }
+
+  const int chevronWidth = (int)(_toolbarIconSize * 2 / 3) + 12;
+  const int avail = width - chevronWidth;
+
+  int first = count;
+  for (i = 0; i < count; i++)
+  {
+    RECT r;
+    if (::SendMessage(tb, TB_GETITEMRECT, (WPARAM)i, (LPARAM)&r) && r.right > avail)
+    {
+      first = i;
+      break;
+    }
+  }
+  // don't leave a separator at the end of visible buttons
+  while (first > 0)
+  {
+    TBBUTTON b;
+    if (!::SendMessage(tb, TB_GETBUTTON, (WPARAM)(first - 1), (LPARAM)&b))
+      break;
+    if ((b.fsStyle & TBSTYLE_SEP) == 0)
+      break;
+    first--;
+  }
+
+  int ids[64];
+  unsigned numIds = 0;
+  for (i = first; i < count && numIds < Z7_ARRAY_SIZE(ids); i++)
+  {
+    TBBUTTON b;
+    if (!::SendMessage(tb, TB_GETBUTTON, (WPARAM)i, (LPARAM)&b))
+      continue;
+    ids[numIds++] = b.idCommand;
+    if ((b.fsStyle & TBSTYLE_SEP) == 0
+        && _numHiddenToolbarCmds < Z7_ARRAY_SIZE(_hiddenToolbarCmds))
+      _hiddenToolbarCmds[_numHiddenToolbarCmds++] = b.idCommand;
+  }
+  for (unsigned k = 0; k < numIds; k++)
+    Toolbar_ShowButton(tb, ids[k], false);
+
+  if (!_chevronBar)
+    return;
+  RECT tr;
+  ::GetWindowRect(tb, &tr);
+  const int h = (int)(tr.bottom - tr.top);
+  POINT pt;
+  pt.x = tr.left;
+  pt.y = tr.top;
+  ::ScreenToClient(_window, &pt);
+  ::SendMessage(_chevronBar, TB_SETBUTTONSIZE, 0, MAKELPARAM(chevronWidth, h > 4 ? h - 4 : h));
+  ::SetWindowPos(_chevronBar, HWND_TOP, width - chevronWidth, pt.y + 2, chevronWidth, h > 4 ? h - 4 : h,
+      SWP_SHOWWINDOW | SWP_NOACTIVATE);
+}
+
+static int GetButtonImageIndex(int commandID)
+{
+  for (unsigned i = 0; i < Z7_ARRAY_SIZE(g_Buttons); i++)
+    if (g_Buttons[i].CommandID == commandID)
+      return (int)g_Buttons[i].ImageIndex;
+  return -1;
+}
+
+// small icon for menu item:
+// 32-bit top-down DIB with premultiplied alpha (Vista+ menus draw it with alpha).
+// (strip) is 32-bit DIB section loaded with LR_CREATEDIBSECTION.
+static HBITMAP CreateMenuIcon(HBITMAP strip, int imageIndex)
+{
+  DIBSECTION ds;
+  if (::GetObject(strip, sizeof(ds), &ds) != sizeof(ds))
+    return NULL;
+  if (ds.dsBm.bmBitsPixel != 32 || !ds.dsBm.bmBits)
+    return NULL;
+  const int size = ds.dsBm.bmHeight;
+  if (size <= 0 || (imageIndex + 1) * size > ds.dsBm.bmWidth)
+    return NULL;
+  const bool bottomUp = (ds.dsBmih.biHeight > 0);
+
+  BITMAPINFO bi;
+  memset(&bi, 0, sizeof(bi));
+  bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+  bi.bmiHeader.biWidth = size;
+  bi.bmiHeader.biHeight = -size; // top-down
+  bi.bmiHeader.biPlanes = 1;
+  bi.bmiHeader.biBitCount = 32;
+  bi.bmiHeader.biCompression = BI_RGB;
+  void *bits = NULL;
+  HBITMAP bmp = ::CreateDIBSection(NULL, &bi, DIB_RGB_COLORS, &bits, NULL, 0);
+  if (!bmp || !bits)
+    return bmp;
+
+  Byte *dest = (Byte *)bits;
+  for (int y = 0; y < size; y++)
+  {
+    const int srcRow = bottomUp ? (size - 1 - y) : y;
+    const Byte *src = (const Byte *)ds.dsBm.bmBits
+        + (size_t)srcRow * (size_t)ds.dsBm.bmWidthBytes
+        + (size_t)imageIndex * (size_t)size * 4;
+    for (int x = 0; x < size; x++)
+    {
+      const unsigned a = src[3];
+      dest[0] = (Byte)((src[0] * a + 127) / 255);
+      dest[1] = (Byte)((src[1] * a + 127) / 255);
+      dest[2] = (Byte)((src[2] * a + 127) / 255);
+      dest[3] = (Byte)a;
+      src += 4;
+      dest += 4;
+    }
+  }
+  return bmp;
+}
+
+void CApp::ShowToolbarOverflowMenu()
+{
+  if (_numHiddenToolbarCmds == 0 || !_chevronBar)
+    return;
+  HMENU menu = ::CreatePopupMenu();
+  if (!menu)
+    return;
+
+  // small icon strip with size closest to system small icon size
+  HBITMAP strip = NULL;
+  {
+    const int want = ::GetSystemMetrics(SM_CXSMICON);
+    static const int kSizes[] = { 16, 20, 24, 32 };
+    static const UINT kIDs[] = { IDB_TB16, IDB_TB20, IDB_TB24, IDB_TB32 };
+    unsigned best = 0;
+    for (unsigned k = 1; k < Z7_ARRAY_SIZE(kSizes); k++)
+    {
+      const int d1 = kSizes[k] - want;
+      const int d0 = kSizes[best] - want;
+      if ((d1 < 0 ? -d1 : d1) < (d0 < 0 ? -d0 : d0))
+        best = k;
+    }
+    strip = LoadAlphaBitmap(kIDs[best]);
+  }
+
+  HBITMAP icons[32]; // same size as _hiddenToolbarCmds[]
+  unsigned numIcons = 0;
+
+  for (unsigned i = 0; i < _numHiddenToolbarCmds; i++)
+  {
+    const int id = _hiddenToolbarCmds[i];
+    UString s;
+    SetButtonText(id, s);
+
+    MENUITEMINFOW mi;
+    memset(&mi, 0, sizeof(mi));
+    mi.cbSize = sizeof(mi);
+    mi.fMask = MIIM_ID | MIIM_STRING | MIIM_FTYPE;
+    mi.fType = MFT_STRING;
+    mi.wID = (UINT)id;
+    mi.dwTypeData = s.Ptr_non_const();
+    mi.cch = s.Len();
+
+    HBITMAP icon = NULL;
+    const int imageIndex = GetButtonImageIndex(id);
+    if (strip && imageIndex >= 0)
+      icon = CreateMenuIcon(strip, imageIndex);
+    if (icon)
+    {
+      mi.fMask |= MIIM_BITMAP;
+      mi.hbmpItem = icon;
+      icons[numIcons++] = icon;
+    }
+    ::InsertMenuItemW(menu, i, TRUE, &mi);
+  }
+  if (strip)
+    ::DeleteObject(strip);
+  RECT r;
+  ::GetWindowRect(_chevronBar, &r);
+  const int cmd = (int)::TrackPopupMenu(menu,
+      TPM_RETURNCMD | TPM_RIGHTALIGN | TPM_TOPALIGN | TPM_NONOTIFY,
+      r.right, r.bottom, 0, _window, NULL);
+  ::DestroyMenu(menu);
+  for (unsigned k = 0; k < numIcons; k++)
+    ::DeleteObject(icons[k]);
+  if (cmd != 0)
+    ::PostMessage(_window, WM_COMMAND, MAKEWPARAM((unsigned)cmd, 0), 0);
 }
 
 void CApp::SaveToolbarChanges()

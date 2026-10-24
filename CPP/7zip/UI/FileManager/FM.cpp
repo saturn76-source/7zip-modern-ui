@@ -889,6 +889,7 @@ static void ExecuteCommand(UINT commandID)
     case kMenuCmdID_Toolbar_Add: g_App.AddToArchive(); break;
     case kMenuCmdID_Toolbar_Extract: g_App.ExtractArchives(); break;
     case kMenuCmdID_Toolbar_Test: g_App.TestArchives(); break;
+    case kMenuCmdID_Toolbar_Chevron: g_App.ShowToolbarOverflowMenu(); break;
   }
 }
 
@@ -1209,6 +1210,7 @@ void CApp::MoveSubWindows()
     int h2 = Window_GetRealHeight(_toolBar);
     _toolBar.Move(0, headerSize, xSize, h2);
     #endif
+    UpdateToolbarOverflow(xSize);
     headerSize += Window_GetRealHeight(_toolBar);
   }
   
