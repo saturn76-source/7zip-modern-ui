@@ -263,6 +263,7 @@ static const UINT k_Sub_Status   = 1 << 2;
 static const UINT k_Sub_ListHeader = 1 << 3; // list view: light text in column headers
 static const UINT k_Sub_Tab      = 1 << 4;  // tab control: we draw dark tabs
 static const UINT k_Sub_Sheet    = 1 << 5;  // property sheet frame (Options window)
+static const UINT k_Sub_ComboEx  = 1 << 6;  // ComboBoxEx: we draw items of drop-down list
 
 static const wchar_t * const k_Prop_OldProc = L"Z7_Dark_OldProc";
 static const wchar_t * const k_Prop_Flags = L"Z7_Dark_Flags";
@@ -361,6 +362,50 @@ static void PaintTabControl(HWND hwnd)
   ::EndPaint(hwnd, &ps);
 }
 
+// ComboBoxEx (path box): items of drop-down list (icon, indent, text) with dark colors
+static void DrawComboBoxExItem(HWND comboBoxEx, const DRAWITEMSTRUCT *dis)
+{
+  const HDC dc = dis->hDC;
+  const bool isEditPart = ((dis->itemState & ODS_COMBOBOXEDIT) != 0);
+  const bool selected = !isEditPart && (dis->itemState & ODS_SELECTED) != 0;
+  RECT rc = dis->rcItem;
+  ::FillRect(dc, &rc, selected ? Brush_Hot() : Brush_EditBk());
+
+  wchar_t text[1024];
+  text[0] = 0;
+  COMBOBOXEXITEMW item;
+  memset(&item, 0, sizeof(item));
+  item.mask = CBEIF_TEXT | CBEIF_IMAGE | CBEIF_SELECTEDIMAGE | CBEIF_INDENT;
+  item.iItem = isEditPart ? -1 : (INT_PTR)(int)dis->itemID;
+  item.pszText = text;
+  item.cchTextMax = (int)Z7_ARRAY_SIZE(text);
+  if (!isEditPart && (int)dis->itemID < 0)
+    return;
+  if (!::SendMessageW(comboBoxEx, CBEM_GETITEMW, 0, (LPARAM)&item))
+    return;
+
+  int x = rc.left + 2;
+  if (!isEditPart && item.iIndent > 0)
+    x += item.iIndent * 10;
+  const HIMAGELIST il = (HIMAGELIST)::SendMessageW(comboBoxEx, CBEM_GETIMAGELIST, 0, 0);
+  if (il)
+  {
+    int cx = 0, cy = 0;
+    ImageList_GetIconSize(il, &cx, &cy);
+    const int image = selected ? item.iSelectedImage : item.iImage;
+    if (image >= 0)
+      ImageList_Draw(il, image, dc, x, rc.top + (rc.bottom - rc.top - cy) / 2, ILD_TRANSPARENT);
+    x += cx + 4;
+  }
+  if (isEditPart)
+    return; // the text is in edit control
+  ::SetBkMode(dc, TRANSPARENT);
+  ::SetTextColor(dc, k_Dark_Text);
+  RECT tr = rc;
+  tr.left = x;
+  ::DrawTextW(dc, text, -1, &tr, DT_SINGLELINE | DT_VCENTER | DT_NOPREFIX | DT_END_ELLIPSIS);
+}
+
 static LRESULT CALLBACK SubclassProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
   const WNDPROC oldProc = (WNDPROC)::GetPropW(hwnd, k_Prop_OldProc);
@@ -388,6 +433,17 @@ static LRESULT CALLBACK SubclassProc(HWND hwnd, UINT message, WPARAM wParam, LPA
         {
           PaintTabControl(hwnd);
           return 0;
+        }
+        break;
+      case WM_DRAWITEM:
+        if (flags & k_Sub_ComboEx)
+        {
+          const DRAWITEMSTRUCT *dis = (const DRAWITEMSTRUCT *)lParam;
+          if (dis && dis->CtlType == ODT_COMBOBOX)
+          {
+            DrawComboBoxExItem(hwnd, dis);
+            return TRUE;
+          }
         }
         break;
       case WM_NOTIFY:
@@ -497,7 +553,19 @@ void ApplyToComboBoxEx(HWND comboBoxEx)
   SetTheme(combo, theme, NULL);
   SetTheme(edit, theme, NULL);
   Subclass(combo, k_Sub_CtlColor);
-  Subclass(comboBoxEx, k_Sub_CtlColor);
+  Subclass(comboBoxEx, k_Sub_CtlColor | k_Sub_ComboEx);
+  if (combo)
+  {
+    // drop-down list window: dark scroll bar
+    COMBOBOXINFO cbi;
+    memset(&cbi, 0, sizeof(cbi));
+    cbi.cbSize = sizeof(cbi);
+    if (::GetComboBoxInfo(combo, &cbi) && cbi.hwndList)
+    {
+      AllowDark(cbi.hwndList, g_IsDark);
+      SetTheme(cbi.hwndList, g_IsDark ? L"DarkMode_Explorer" : NULL, NULL);
+    }
+  }
   ::InvalidateRect(comboBoxEx, NULL, TRUE);
   if (combo)
     ::InvalidateRect(combo, NULL, TRUE);

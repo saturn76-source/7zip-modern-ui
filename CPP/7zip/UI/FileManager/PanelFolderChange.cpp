@@ -589,6 +589,68 @@ bool CPanel::OnNotifyComboBoxEndEdit(PNMCBEENDEDIT info, LRESULT &result)
 }
 #endif
 
+#ifndef UNDER_CE
+
+/*
+  Desktop, Downloads, Pictures, Videos in the path combo box list.
+  SHGetKnownFolderPath() returns real path (also if user moved the folder).
+  The name is localized name from Windows Shell.
+*/
+
+typedef HRESULT (WINAPI *Func_SHGetKnownFolderPath)(const GUID &rfid, DWORD dwFlags, HANDLE hToken, PWSTR *ppszPath);
+
+static const GUID k_FOLDERID_Desktop   = { 0xB4BFCC3A, 0xDB2C, 0x424C, { 0xB0, 0x29, 0x7F, 0xE9, 0x9A, 0x87, 0xC6, 0x41 } };
+static const GUID k_FOLDERID_Downloads = { 0x374DE290, 0x123F, 0x4565, { 0x91, 0x64, 0x39, 0xC4, 0x92, 0x5E, 0x46, 0x7B } };
+static const GUID k_FOLDERID_Pictures  = { 0x33E28130, 0x4E1E, 0x4676, { 0x83, 0x5A, 0x98, 0x39, 0x5C, 0x3B, 0xC3, 0xBB } };
+static const GUID k_FOLDERID_Videos    = { 0x18989B1D, 0x99B5, 0x455B, { 0x84, 0x1C, 0xAB, 0x7C, 0x74, 0xE4, 0xDD, 0xFC } };
+
+// returns false, if there is no such folder
+static bool GetKnownFolder(const GUID &id, UString &path, UString &name, int &iconIndex)
+{
+  path.Empty();
+  name.Empty();
+  iconIndex = -1;
+  const HMODULE shell = ::GetModuleHandleW(L"shell32.dll");
+  if (!shell)
+    return false;
+  const Func_SHGetKnownFolderPath f = Z7_GET_PROC_ADDRESS(
+      Func_SHGetKnownFolderPath, shell, "SHGetKnownFolderPath");
+  if (!f)
+    return false;
+  PWSTR p = NULL;
+  if (f(id, 0, NULL, &p) != S_OK || !p)
+  {
+    if (p)
+      ::CoTaskMemFree(p);
+    return false;
+  }
+  path = p;
+  ::CoTaskMemFree(p);
+  if (path.IsEmpty() || !NFind::DoesDirExist_FollowLink(us2fs(path)))
+    return false;
+
+  SHFILEINFOW sfi;
+  memset(&sfi, 0, sizeof(sfi));
+  // without SHGFI_USEFILEATTRIBUTES: the real icon of this special folder
+  // (Downloads arrow, Pictures, Videos ...) from system small image list
+  if (::SHGetFileInfoW(path, 0, &sfi, sizeof(sfi),
+      SHGFI_DISPLAYNAME | SHGFI_SYSICONINDEX | SHGFI_SMALLICON))
+    iconIndex = sfi.iIcon;
+  if (sfi.szDisplayName[0] != 0)
+    name = sfi.szDisplayName;
+  else
+  {
+    const int pos = path.ReverseFind_PathSepar();
+    name = path.Ptr((unsigned)(pos + 1));
+  }
+  if (iconIndex < 0)
+    iconIndex = Shell_GetFileInfo_SysIconIndex_for_Path(us2fs(path), FILE_ATTRIBUTE_DIRECTORY);
+  path.Add_PathSepar();
+  return true;
+}
+
+#endif
+
 void CPanel::AddComboBoxItem(const UString &name, int iconIndex, unsigned indent, bool addToList)
 {
   #ifdef UNDER_CE
@@ -765,10 +827,32 @@ bool CPanel::OnComboBoxCommand(UINT code, LPARAM /* param */, LRESULT &result)
 #ifndef UNDER_CE
 
       {
-        int iconIndex;
-        const UString name = RootFolder_GetName_Documents(iconIndex);
-        // iconIndex = -1; // for debug
-        AddComboBoxItem(name, iconIndex, 0, true);
+        // Desktop, Documents, Downloads, Pictures, Videos
+        const GUID * const k_Folders[] =
+        {
+          &k_FOLDERID_Desktop,
+          NULL, // Documents (7-Zip's own item)
+          &k_FOLDERID_Downloads,
+          &k_FOLDERID_Pictures,
+          &k_FOLDERID_Videos
+        };
+        for (unsigned k = 0; k < Z7_ARRAY_SIZE(k_Folders); k++)
+        {
+          if (!k_Folders[k])
+          {
+            int iconIndex;
+            const UString name = RootFolder_GetName_Documents(iconIndex);
+            // iconIndex = -1; // for debug
+            AddComboBoxItem(name, iconIndex, 0, true);
+            continue;
+          }
+          UString path, name;
+          int iconIndex;
+          if (!GetKnownFolder(*k_Folders[k], path, name, iconIndex))
+            continue;
+          ComboBoxPaths.Add(path);
+          AddComboBoxItem(name, iconIndex, 0, false);
+        }
       }
       AddComboBoxItem(name_Computer, iconIndex_Computer, 0, true);
       {
