@@ -537,6 +537,8 @@ bool CPanel::OnCreate(CREATESTRUCT * /* createStruct */)
       (WNDPROC)_comboBoxEdit.SetLongPtr(GWLP_WNDPROC, LONG_PTR(ComboBoxEditSubclassProc));
 #endif
 
+  SetBigUpButtonImage();
+
   if (_headerReBar)
   {
     REBARINFO     rbi;
@@ -594,6 +596,62 @@ bool CPanel::OnCreate(CREATESTRUCT * /* createStruct */)
   RefreshListCtrl();
   
   return true;
+}
+
+/*
+  big "up folder" button (like in WinRAR):
+  the image size is about the height of the path box (it depends on DPI and font).
+  Images: up16.bmp ... up64.bmp (32-bit with alpha).
+  The image list is shared by both panels, and it lives until the program exits.
+*/
+
+static HIMAGELIST g_UpImageList;
+static int g_UpImageSize;
+
+void CPanel::SetBigUpButtonImage()
+{
+  if (!_headerToolBar)
+    return;
+
+  int want = 24;
+  {
+    RECT rc;
+    if (_headerComboBox && ::GetWindowRect(_headerComboBox, &rc) && rc.bottom - rc.top > 8)
+      want = (int)(rc.bottom - rc.top) - 2;
+  }
+
+  static const int kSizes[] = { 16, 20, 24, 28, 32, 40, 48, 56, 64 };
+  static const UINT kIDs[] = { IDB_UP16, IDB_UP20, IDB_UP24, IDB_UP28, IDB_UP32,
+      IDB_UP40, IDB_UP48, IDB_UP56, IDB_UP64 };
+  unsigned best = 0;
+  for (unsigned i = 0; i < Z7_ARRAY_SIZE(kSizes); i++)
+    if (kSizes[i] <= want)
+      best = i;
+  const int size = kSizes[best];
+
+  if (!g_UpImageList || g_UpImageSize != size)
+  {
+    HIMAGELIST il = ImageList_Create(size, size, ILC_COLOR32, 1, 0);
+    if (!il)
+      return;
+    HBITMAP b = (HBITMAP)::LoadImage(g_hInstance, MAKEINTRESOURCE(kIDs[best]),
+        IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION);
+    if (!b)
+    {
+      ImageList_Destroy(il);
+      return;
+    }
+    ImageList_Add(il, b, NULL);
+    ::DeleteObject(b);
+    g_UpImageList = il; // old list (if any) can still be used by other panel
+    g_UpImageSize = size;
+  }
+
+  ::SendMessage(_headerToolBar, TB_SETIMAGELIST, 0, (LPARAM)g_UpImageList);
+  ::SendMessage(_headerToolBar, TB_CHANGEBITMAP, (WPARAM)kParentFolderID, MAKELPARAM(0, 0));
+  ::SendMessage(_headerToolBar, TB_SETPADDING, 0, MAKELPARAM(4, 4));
+  ::SendMessage(_headerToolBar, TB_SETBUTTONSIZE, 0, MAKELPARAM(size + 4, size + 4));
+  ::SendMessage(_headerToolBar, TB_AUTOSIZE, 0, 0);
 }
 
 void CPanel::OnDestroy()

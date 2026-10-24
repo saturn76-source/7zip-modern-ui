@@ -430,6 +430,7 @@ public:
 
   NWindows::NControl::CReBar _headerReBar;
   NWindows::NControl::CToolBar _headerToolBar;
+  void SetBigUpButtonImage();
   NWindows::NControl::
     #ifdef UNDER_CE
     CComboBox

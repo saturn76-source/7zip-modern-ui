@@ -32,6 +32,17 @@
 #define IDB_TB16     177
 #define IDB_TB20     178
 
+// big "up folder" button images
+#define IDB_UP16     190
+#define IDB_UP20     191
+#define IDB_UP24     192
+#define IDB_UP28     193
+#define IDB_UP32     194
+#define IDB_UP40     195
+#define IDB_UP48     196
+#define IDB_UP56     197
+#define IDB_UP64     198
+
 #define IDB_LOGO24   180
 #define IDB_LOGO32   181
 #define IDB_LOGO40   182
