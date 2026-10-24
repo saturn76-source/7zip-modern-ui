@@ -146,7 +146,7 @@ HRESULT CApp::CreateOnePanel(unsigned panelIndex, const UString &mainPath, const
     one toolbar, big colored icons with the text under each icon.
   Images are stored in 32-bit (alpha) bitmap strips: tb24.bmp ... tb96.bmp.
   Every strip has (kNumToolbarImages) square cells of size (height) x (height).
-  Cell order in strip: Add, Extract, Test, View, Delete, Find, Wizard, Info, Repair
+  Cell order in strip: Add, Extract, Test, View, Delete, Find, Wizard, Info, Comment
   The 7ZIP logo (logo24.bmp ... logo96.bmp) is not a button:
   it's drawn at the left side of toolbar, in the indent area.
 */
@@ -337,7 +337,7 @@ static const CButtonInfo g_Buttons[] =
   { IDM_SELECT,                 5, IDS_BUTTON_FIND,   true,  false },
   { IDM_OPTIONS,                6, IDS_BUTTON_WIZARD, true,  false },
   { IDM_PROPERTIES,             7, IDS_BUTTON_INFO,   true,  false },
-  { IDM_HASH_ALL,               8, IDS_BUTTON_REPAIR, true,  true  }
+  { IDM_COMMENT,                8, IDS_BUTTON_COMMENT, true, true  }
 };
 
 static void SetButtonText(int commandID, UString &s)

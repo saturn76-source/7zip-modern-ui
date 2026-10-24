@@ -219,7 +219,7 @@
 #define IDS_BUTTON_VIEW                 7207
 #define IDS_BUTTON_FIND                 7208
 #define IDS_BUTTON_WIZARD               7209
-#define IDS_BUTTON_REPAIR               7210
+#define IDS_BUTTON_COMMENT              7210
 #define IDS_BUTTON_ABOUT                7211
 
 #define IDS_SPLITTING                   7303

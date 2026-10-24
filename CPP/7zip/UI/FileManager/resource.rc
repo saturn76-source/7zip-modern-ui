@@ -267,7 +267,7 @@ BEGIN
   IDS_BUTTON_VIEW    "View"
   IDS_BUTTON_FIND    "Find"
   IDS_BUTTON_WIZARD  "Wizard"
-  IDS_BUTTON_REPAIR  "Repair"
+  IDS_BUTTON_COMMENT "Comment"
   IDS_BUTTON_ABOUT   "About 7-Zip"
 
   IDS_SPLITTING            "Splitting..."

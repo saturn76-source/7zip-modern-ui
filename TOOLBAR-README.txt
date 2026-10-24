@@ -28,7 +28,7 @@ BUTTONS (edit table g_Buttons[] in App.cpp to change them)
   Find      -> Select files by mask (Num +)
   Wizard    -> Options
   Info      -> Properties (Alt+Enter)
-  Repair    -> Checksum (CRC SHA *) of selected files
+  Comment   -> File > Comment (Ctrl+Z)
 
 View > Toolbars: "Toolbar" shows/hides it, "Large Buttons" switches 48/32 px icons,
 "Show Buttons Text" shows/hides the labels. Icon size also follows Windows DPI scaling.
