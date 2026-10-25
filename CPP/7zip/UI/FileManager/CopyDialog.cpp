@@ -52,11 +52,17 @@ bool CCopyDialog::OnInit()
     }
     if (dpi <= 0)
       dpi = 96;
-    _iconSize = 64 * dpi / 96;
+    _iconSize = 96 * dpi / 96;
     _icon = (HICON)::LoadImageW(g_hInstance, MAKEINTRESOURCEW(IconResID),
         IMAGE_ICON, _iconSize, _iconSize, LR_DEFAULTCOLOR);
     if (_icon)
+    {
       ::SendDlgItemMessageW(*this, IDC_COPY_ICON, STM_SETICON, (WPARAM)_icon, 0);
+      // the control must be as big as the picture, else picture is cropped
+      RECT r;
+      GetClientRectOfItem(IDC_COPY_ICON, r);
+      MoveItem(IDC_COPY_ICON, r.right - _iconSize, r.top, _iconSize, _iconSize);
+    }
   }
   if (!_icon)
     ShowItem_Bool(IDC_COPY_ICON, false);
