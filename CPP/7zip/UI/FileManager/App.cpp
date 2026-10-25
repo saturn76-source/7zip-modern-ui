@@ -21,6 +21,7 @@
 
 #include "App.h"
 #include "DarkMode.h"
+#include "ToolbarCustomizeDialog.h"
 
 // these toolbar custom draw flags require (_WIN32_IE >= 0x0600) in commctrl.h
 #ifndef TBCDRF_USECDCOLORS
@@ -560,6 +561,9 @@ static void AddButton(
   #endif
 }
 
+static LRESULT CALLBACK ToolbarSubclassProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam,
+    UINT_PTR idSubclass, DWORD_PTR refData);
+
 void CApp::ReloadToolbars()
 {
   _buttonsImageList.Destroy();
@@ -577,6 +581,8 @@ void CApp::ReloadToolbars()
   if (ShowArchiveToolbar || ShowStandardToolbar)
   {
     _toolbarIconSize = CreateToolbar(_window, _buttonsImageList, _logoImageList, _toolBar, LargeButtons, ClassicIcons);
+    if (_toolBar)
+      ::SetWindowSubclass(_toolBar, ToolbarSubclassProc, 1, (DWORD_PTR)(HWND)_window);
     CRecordVector<int> layout;
     if (!ReadToolbarLayout(layout))
       GetDefaultToolbarLayout(layout);
@@ -723,6 +729,45 @@ void CApp::ShowToolbarContextMenu()
   }
 }
 
+// small icons for lists in "Customize Toolbar" window
+static HIMAGELIST CreateSmallToolbarImageList(bool classic)
+{
+  int dpi = 96;
+  const HDC dc = ::GetDC(NULL);
+  if (dc)
+  {
+    dpi = ::GetDeviceCaps(dc, LOGPIXELSY);
+    ::ReleaseDC(NULL, dc);
+  }
+  if (dpi <= 0)
+    dpi = 96;
+  unsigned size = 24;
+  UINT resID = IDB_TBC_S; // classic small icons: 24x24
+  if (!classic)
+  {
+    const unsigned want = (unsigned)(20 * dpi / 96);
+    static const unsigned kSizes[] = { 16, 20, 24, 32, 40, 48 };
+    static const UINT kIDs[] = { IDB_TB16, IDB_TB20, IDB_TB24, IDB_TB32, IDB_TB40, IDB_TB48 };
+    unsigned best = 0;
+    for (unsigned k = 0; k < Z7_ARRAY_SIZE(kSizes); k++)
+      if (kSizes[k] <= want)
+        best = k;
+    size = kSizes[best];
+    resID = kIDs[best];
+  }
+  HIMAGELIST il = ImageList_Create((int)size, (int)size, ILC_COLOR32, (int)kNumToolbarImages, 0);
+  if (!il)
+    return NULL;
+  HBITMAP b = LoadAlphaBitmap(resID);
+  if (b)
+  {
+    ImageList_Add(il, b, NULL);
+    ::DeleteObject(b);
+  }
+  return il;
+}
+
+// our own "Customize Toolbar" window (compact lists with small icons)
 void CApp::CustomizeToolbar()
 {
   if (!_toolBar)
@@ -730,8 +775,45 @@ void CApp::CustomizeToolbar()
     ShowArchiveToolbar = true;
     SaveToolbarChanges();
   }
-  if (_toolBar)
-    ::SendMessage(_toolBar, TB_CUSTOMIZE, 0, 0);
+  CToolbarCustomizeDialog dlg;
+  for (unsigned i = 0; i < Z7_ARRAY_SIZE(g_Buttons); i++)
+  {
+    CToolbarButtonDesc &d = dlg.Buttons.AddNew();
+    d.Text = g_Buttons[i].GetText();
+    d.ImageIndex = (int)g_Buttons[i].ImageIndex;
+  }
+  GetCurrentToolbarLayout(dlg.Layout);
+  GetDefaultToolbarLayout(dlg.DefaultLayout);
+  dlg.ImageList = CreateSmallToolbarImageList(ClassicIcons);
+  const INT_PTR res = dlg.Create(_window);
+  if (dlg.ImageList)
+    ImageList_Destroy(dlg.ImageList);
+  if (res != IDOK)
+    return;
+  SaveToolbarLayout(dlg.Layout);
+  SaveToolbarChanges(); // rebuild toolbar
+}
+
+// double click on empty part of toolbar: our "Customize Toolbar" window
+// (instead of Windows dialog of CCS_ADJUSTABLE toolbar)
+static LRESULT CALLBACK ToolbarSubclassProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam,
+    UINT_PTR /* idSubclass */, DWORD_PTR refData)
+{
+  if (message == WM_LBUTTONDBLCLK)
+  {
+    POINT pt;
+    pt.x = (short)LOWORD(lParam);
+    pt.y = (short)HIWORD(lParam);
+    const int hit = (int)::SendMessage(hwnd, TB_HITTEST, 0, (LPARAM)&pt);
+    if (hit < 0)
+    {
+      ::PostMessage((HWND)refData, WM_COMMAND, IDM_VIEW_TOOLBARS_CUSTOMIZE, 0);
+      return 0;
+    }
+  }
+  else if (message == WM_NCDESTROY)
+    ::RemoveWindowSubclass(hwnd, ToolbarSubclassProc, 1);
+  return ::DefSubclassProc(hwnd, message, wParam, lParam);
 }
 
 // toolbar notifications for "Customize Toolbar" dialog and Alt+drag

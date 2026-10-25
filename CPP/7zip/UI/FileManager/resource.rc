@@ -320,6 +320,7 @@ END
 #include "BrowseDialog2.rc"
 #include "ComboDialog.rc"
 #include "FindDialog.rc"
+#include "ToolbarCustomizeDialog.rc"
 #include "CopyDialog.rc"
 #include "EditDialog.rc"
 #include "EditPage.rc"

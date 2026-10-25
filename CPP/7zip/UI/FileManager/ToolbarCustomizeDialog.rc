@@ -1,0 +1,42 @@
+#include "ToolbarCustomizeDialogRes.h"
+#include "../../GuiCommon.rc"
+
+IDC_TBC_DRAG_CURSOR  CURSOR  "../../UI/FileManager/DragMove.cur"
+
+#define xc 352
+#define yc 156
+
+#define lw 110
+#define lh 112
+#define bw 52
+#define x2 (m + lw + 8)
+#define x3 (x2 + bw + 8)
+#define x4 (x3 + lw + 8)
+
+IDD_TB_CUSTOMIZE  DIALOG  0, 0, xs, ys  MY_MODAL_DIALOG_STYLE  MY_FONT
+CAPTION "Customize Toolbar"
+{
+  LTEXT      "Available toolbar buttons:", IDT_TBC_AVAIL, m, m, lw, 8
+  CONTROL    "", IDL_TBC_AVAIL, "SysListView32",
+             LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOCOLUMNHEADER | WS_BORDER | WS_TABSTOP,
+             m, 20, lw, lh
+  PUSHBUTTON "&Add ->",    IDB_TBC_ADD,    x2, 46, bw, bys
+  PUSHBUTTON "<- &Remove", IDB_TBC_REMOVE, x2, 68, bw, bys
+  LTEXT      "Current toolbar buttons:", IDT_TBC_CURRENT, x3, m, lw, 8
+  CONTROL    "", IDL_TBC_CURRENT, "SysListView32",
+             LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS | LVS_NOCOLUMNHEADER | WS_BORDER | WS_TABSTOP,
+             x3, 20, lw, lh
+  PUSHBUTTON "Move &Up",   IDB_TBC_UP,     x4, 20, xs - m - x4, bys
+  PUSHBUTTON "Move &Down", IDB_TBC_DOWN,   x4, 42, xs - m - x4, bys
+  PUSHBUTTON "R&eset",     IDB_TBC_RESET,  x4, 74, xs - m - x4, bys
+  OK_CANCEL
+}
+
+#undef lw
+#undef lh
+#undef bw
+#undef x2
+#undef x3
+#undef x4
+#undef xc
+#undef yc
