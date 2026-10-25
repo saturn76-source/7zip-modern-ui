@@ -247,7 +247,7 @@ static const int kLogoMargin = 10;
 
 static unsigned CreateToolbar(HWND parent,
     NControl::CImageList &imageList,
-    NControl::CImageList &logoImageList,
+    NControl::CImageList & /* logoImageList */,
     NControl::CToolBar &toolBar,
     bool largeButtons,
     bool classic)
@@ -310,23 +310,7 @@ static unsigned CreateToolbar(HWND parent,
     ::SendMessage(toolBar, TB_SETPADDING, 0, MAKELPARAM(padX, padY));
   }
 
-  // logo at the left side
-  {
-    HBITMAP b = LoadAlphaBitmap(strip.LogoResID);
-    if (b)
-    {
-      BITMAP bm;
-      if (::GetObject(b, sizeof(bm), &bm) == sizeof(bm) && bm.bmWidth > 0 && bm.bmHeight > 0)
-      {
-        if (logoImageList.Create(bm.bmWidth, bm.bmHeight, ILC_COLOR32, 1, 0))
-        {
-          logoImageList.Add(b);
-          ::SendMessage(toolBar, TB_SETINDENT, (WPARAM)(bm.bmWidth + kLogoMargin * 2), 0);
-        }
-      }
-      ::DeleteObject(b);
-    }
-  }
+  // no logo in toolbar (user removed it)
   return h;
 }
 
@@ -357,7 +341,11 @@ static void DrawToolbarLogo(HWND toolBar, HIMAGELIST logoImageList, HDC dc)
   }
   if (y < 0)
     y = 0;
-  ImageList_Draw(logoImageList, 0, dc, kLogoMargin, y, ILD_NORMAL);
+  // at the right end of toolbar
+  const int x = (int)rc.right - kLogoMargin - w;
+  if (x < 0)
+    return;
+  ImageList_Draw(logoImageList, 0, dc, x, y, ILD_NORMAL);
 }
 
 
