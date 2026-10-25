@@ -1,17 +1,40 @@
 #include "FindDialogRes.h"
 #include "../../GuiCommon.rc"
 
-#define xc 260
-#define yc 86
+#define xc 280
+#define yc 120
 
 IDD_FIND  DIALOG  0, 0, xs, ys  MY_MODAL_DIALOG_STYLE  MY_FONT
 CAPTION "Find"
 {
   LTEXT      "File name (you can use * and ?):", IDT_FIND_NAME, m, m, xc, 8
   COMBOBOX   IDC_FIND_NAME, m, 20, xc, 65, MY_COMBO_WITH_EDIT
-  CONTROL    "Search in &subfolders", IDX_FIND_SUBFOLDERS, MY_CHECKBOX, m, 40, xc, 10
-  CONTROL    "Search in &archives only (look inside archive files)", IDX_FIND_ARCHIVES, MY_CHECKBOX, m, 54, xc, 10
+  LTEXT      "Search &in:", IDT_FIND_LOCATION, m, 40, xc, 8
+  EDITTEXT   IDE_FIND_LOCATION, m, 52, xc - bxsDots - 4, 14, ES_AUTOHSCROLL
+  PUSHBUTTON "...", IDB_FIND_BROWSE, xs - m - bxsDots, 51, bxsDots, bys, WS_GROUP
+  CONTROL    "Search in &subfolders", IDX_FIND_SUBFOLDERS, MY_CHECKBOX, m, 74, xc, 10
+  CONTROL    "Search in &archives only (look inside archive files)", IDX_FIND_ARCHIVES, MY_CHECKBOX, m, 88, xc, 10
   OK_CANCEL
+}
+
+#undef xc
+#undef yc
+
+
+#define xc 360
+#define yc 220
+
+IDD_FIND_PROGRESS  DIALOG  0, 0, xs, ys  MY_MODAL_DIALOG_STYLE  MY_FONT
+CAPTION "Find"
+{
+  LTEXT      "", IDT_FIND_PROGRESS_LOCATION, m, m, xc, 8, SS_PATHELLIPSIS | SS_NOPREFIX
+  LTEXT      "Searching...", IDT_FIND_PROGRESS_STATUS, m, 22, xc, 8
+  LTEXT      "", IDT_FIND_PROGRESS_FOLDER, m, 36, xc, 8, SS_PATHELLIPSIS | SS_NOPREFIX
+  LTEXT      "", IDT_FIND_PROGRESS_FOUND, m, 50, xc, 8, SS_NOPREFIX
+  CONTROL    "", IDL_FIND_PROGRESS_LIST, "SysListView32",
+             LVS_REPORT | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_BORDER | WS_TABSTOP,
+             m, 64, xc, yc - 64 - bys - 4
+  PUSHBUTTON "Cancel", IDCANCEL, bx1, by, bxs, bys
 }
 
 #undef xc

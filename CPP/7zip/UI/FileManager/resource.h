@@ -238,6 +238,9 @@
 #define IDS_FIND_NOT_FOUND              7216
 #define IDS_FIND_UNSUPPORTED            7217
 #define IDS_FIND_TOO_MANY               7218
+#define IDS_FIND_FOUND                  7219
+#define IDS_FIND_STOPPING               7220
+#define IDS_FIND_BAD_LOCATION           7221
 
 #define IDS_SPLITTING                   7303
 #define IDS_SPLIT_CONFIRM_TITLE         7304

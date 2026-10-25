@@ -291,6 +291,9 @@ BEGIN
   IDS_FIND_NOT_FOUND   "No files found"
   IDS_FIND_UNSUPPORTED "Find works only in folders on disk and in archives"
   IDS_FIND_TOO_MANY    "Too many files found. Only the first ones are shown."
+  IDS_FIND_FOUND       "Found: {0}"
+  IDS_FIND_STOPPING    "Stopping..."
+  IDS_FIND_BAD_LOCATION "Cannot find the folder:\n{0}"
 
   IDS_SPLITTING            "Splitting..."
   IDS_SPLIT_CONFIRM_TITLE  "Confirm Splitting"

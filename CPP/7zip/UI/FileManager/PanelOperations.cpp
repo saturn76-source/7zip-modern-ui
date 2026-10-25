@@ -952,8 +952,9 @@ static UString GetLongPathForFind(const UString &path)
 
 // searches in thread; UI messages are processed while waiting
 static void FindFiles_FS(HWND mainWindow, NWindows::NControl::CStatusBar &statusBar,
-    const UString &searchingText, CFsFindContext &ctx)
+    const UString &searchingText, const UString &baseFolder, CFsFindContext &ctx)
 {
+  const UString searchingStatus = LangString(IDS_FIND_SEARCHING);
   DWORD threadID = 0;
   HANDLE thread = ::CreateThread(NULL, 0, FsFindThread, &ctx, 0, &threadID);
   if (!thread)
@@ -962,6 +963,20 @@ static void FindFiles_FS(HWND mainWindow, NWindows::NControl::CStatusBar &status
     return;
   }
   ::EnableWindow(mainWindow, FALSE);
+
+  // progress window: current folder, number of found files, Cancel button
+  CFindProgressDialog progress;
+  LangString(IDS_FIND_TITLE, progress.Title);
+  progress.Location = baseFolder;
+  progress.Status = searchingStatus;
+  bool progressCreated = false;
+  if (progress.CreateWindow2(mainWindow))
+  {
+    progressCreated = true;
+    progress.Show(SW_SHOW);
+  }
+  bool stoppingShown = false;
+  unsigned numShown = 0; // number of found files that are in progress window list
   DWORD lastTime = 0;
   for (;;)
   {
@@ -979,31 +994,65 @@ static void FindFiles_FS(HWND mainWindow, NWindows::NControl::CStatusBar &status
       }
       if (msg.message == WM_KEYDOWN && msg.wParam == VK_ESCAPE)
         ctx.SetStop();
+      // Tab, Enter, Esc in progress window
+      if (progressCreated && ::IsDialogMessageW(progress, &msg))
+        continue;
       ::TranslateMessage(&msg);
       ::DispatchMessageW(&msg);
     }
     if (::GetForegroundWindow() == mainWindow && (::GetAsyncKeyState(VK_ESCAPE) & 0x8000))
       ctx.SetStop();
+    if (progressCreated && progress.CancelPressed)
+      ctx.SetStop();
+    if (progressCreated && !stoppingShown && ctx.IsStopped())
+    {
+      stoppingShown = true;
+      progress.SetItemText(IDT_FIND_PROGRESS_STATUS, LangString(IDS_FIND_STOPPING));
+    }
     const DWORD t = ::GetTickCount();
     if (t - lastTime >= 200)
     {
       lastTime = t;
       UString folder;
       unsigned num;
+      UStringVector newNames, newFolders;
       ::EnterCriticalSection(&ctx.CS);
       folder = ctx.CurFolder;
       num = ctx.Names.Size();
+      if (progressCreated)
+      {
+        // new found files for the list in progress window (not too many at once)
+        const unsigned kMaxPerUpdate = 1000;
+        const unsigned end = (num - numShown > kMaxPerUpdate) ? numShown + kMaxPerUpdate : num;
+        for (unsigned k = numShown; k < end; k++)
+        {
+          newNames.Add(ctx.Names[k]);
+          newFolders.Add(baseFolder + ctx.RelFolders[k]);
+        }
+        numShown = end;
+      }
       ::LeaveCriticalSection(&ctx.CS);
+      if (progressCreated)
+        progress.AddFound(newNames, newFolders);
       UString s = searchingText;
       s.Add_Space();
       s.Add_UInt32(num);
       statusBar.SetText(0, s);
       statusBar.SetText(3, folder);
+      if (progressCreated)
+      {
+        UString numString;
+        numString.Add_UInt32(num);
+        progress.SetProgress(folder, MyFormatNew(IDS_FIND_FOUND, numString));
+      }
     }
   }
   ::WaitForSingleObject(thread, INFINITE);
   ::CloseHandle(thread);
+  // enable main window before closing of progress window, so the focus goes to main window
   ::EnableWindow(mainWindow, TRUE);
+  if (progressCreated)
+    progress.Destroy();
   ::SetForegroundWindow(mainWindow);
 }
 
@@ -1016,8 +1065,11 @@ void CPanel::FindFiles()
   }
 
   UString mask;
+  UString location; // folder where we search
   {
     CFindDialog dlg;
+    dlg.Location = _currentFolderPrefix;
+    dlg.LocationEditable = IsFSFolder();
     LangString(IDS_FIND_TITLE, dlg.Title);
     LangString(IDS_FIND_PROMPT, dlg.Static);
     dlg.Value = g_FindLastMask;
@@ -1028,6 +1080,7 @@ void CPanel::FindFiles()
     if (dlg.Create(GetParent()) != IDOK)
       return;
     mask = dlg.Value;
+    location = dlg.Location;
     g_FindSubfolders = dlg.Subfolders;
     if (dlg.ArchivesOnlyEnabled)
       g_FindArchivesOnly = dlg.ArchivesOnly;
@@ -1055,7 +1108,26 @@ void CPanel::FindFiles()
     mask += L'*';
   }
 
-  const UString baseFolder = _currentFolderPrefix;
+  UString baseFolder = _currentFolderPrefix;
+  if (IsFSFolder() && !location.IsEmpty())
+  {
+    // user can change the folder for search in Find window
+    UString loc = location;
+    if (loc.Len() == 2 && loc.Ptr()[1] == L':')
+      loc.Add_PathSepar(); // "D:" -> "D:\"
+    UString checkPath = loc;
+    if (checkPath.Len() > 3 && IS_PATH_SEPAR(checkPath.Back()))
+      checkPath.DeleteBack();
+    const DWORD attrib = ::GetFileAttributesW(checkPath);
+    if (attrib == INVALID_FILE_ATTRIBUTES || (attrib & FILE_ATTRIBUTE_DIRECTORY) == 0)
+    {
+      MessageBox_Error(MyFormatNew(IDS_FIND_BAD_LOCATION, location));
+      return;
+    }
+    if (!IS_PATH_SEPAR(loc.Back()))
+      loc.Add_PathSepar();
+    baseFolder = loc;
+  }
   UStringVector arcRels; // for results inside archives (search in archives mode)
 
   CFindContext ctx;
@@ -1075,7 +1147,7 @@ void CPanel::FindFiles()
       LoadGlobalCodecs();
     _statusBar.SetText(0, ctx.SearchingText);
     _statusBar.SetText(3, L"");
-    FindFiles_FS(GetParent(), _statusBar, ctx.SearchingText, fs);
+    FindFiles_FS(GetParent(), _statusBar, ctx.SearchingText, baseFolder, fs);
     _statusBar.SetText(3, L"");
     ctx.Names = fs.Names;
     ctx.RelFolders = fs.RelFolders;
