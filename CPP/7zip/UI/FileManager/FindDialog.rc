@@ -1,0 +1,18 @@
+#include "FindDialogRes.h"
+#include "../../GuiCommon.rc"
+
+#define xc 260
+#define yc 86
+
+IDD_FIND  DIALOG  0, 0, xs, ys  MY_MODAL_DIALOG_STYLE  MY_FONT
+CAPTION "Find"
+{
+  LTEXT      "File name (you can use * and ?):", IDT_FIND_NAME, m, m, xc, 8
+  COMBOBOX   IDC_FIND_NAME, m, 20, xc, 65, MY_COMBO_WITH_EDIT
+  CONTROL    "Search in &subfolders", IDX_FIND_SUBFOLDERS, MY_CHECKBOX, m, 40, xc, 10
+  CONTROL    "Search in &archives only (look inside archive files)", IDX_FIND_ARCHIVES, MY_CHECKBOX, m, 54, xc, 10
+  OK_CANCEL
+}
+
+#undef xc
+#undef yc

@@ -25,7 +25,8 @@ BUTTONS (edit table g_Buttons[] in App.cpp to change them)
   Test      -> Test archive
   View      -> View file (F3)
   Delete    -> Delete (Del)
-  Find      -> Find files in this folder and subfolders (Edit > Find..., Ctrl+F)
+  Find      -> Find files (Edit > Find..., Ctrl+F). Options: search in subfolders,
+               search in archives only (looks inside zip, 7z, rar ... files)
   Wizard    -> Options
   Info      -> Properties (Alt+Enter)
   Comment   -> File > Comment (Ctrl+Z)

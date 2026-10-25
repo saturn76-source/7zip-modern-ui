@@ -12,6 +12,16 @@
 
 #include "ComboDialog.h"
 #include "ListViewDialog.h"
+#include "FindDialog.h"
+
+#include "../Common/ArchiveOpenCallback.h"
+#include "../Common/LoadCodecs.h"
+#include "../Common/OpenArchive.h"
+
+#include <string.h>
+
+extern CCodecs *g_CodecsObj;
+HRESULT LoadGlobalCodecs();
 
 #include "FSFolder.h"
 #include "FormatUtils.h"
@@ -544,6 +554,8 @@ void CPanel::ChangeComment()
 */
 
 static UString g_FindLastMask;
+static bool g_FindSubfolders = true;
+static bool g_FindArchivesOnly = false;
 static UStringVector g_FindHistory;
 static const unsigned kFindHistoryMax = 20;
 static const unsigned kFindMaxResults = 20000;
@@ -648,6 +660,7 @@ struct CFsFindContext
   UString Mask;
   UString RootDir;      // with path separator at the end, can be long path (\\?\)
   bool Recursive;
+  bool ArchivesOnly;    // look for items inside archive files
   LONG StopFlag;        // it's changed by both threads: we use Interlocked functions
   bool TooMany;
   CRITICAL_SECTION CS;
@@ -655,14 +668,179 @@ struct CFsFindContext
   UString CurFolder;
   UStringVector Names;
   UStringVector RelFolders;
+  UStringVector ArcRels;   // (ArchivesOnly) relative path of archive for each result
+  // only for thread:
+  UStringVector ProcessedVolumes; // volumes of multi-volume archives that were opened already
 
   bool IsStopped() { return ::InterlockedCompareExchange(&StopFlag, 0, 0) != 0; }
   void SetStop() { ::InterlockedExchange(&StopFlag, 1); }
 
-  CFsFindContext(): Recursive(true), StopFlag(0), TooMany(false)
+  CFsFindContext(): Recursive(true), ArchivesOnly(false), StopFlag(0), TooMany(false)
     { ::InitializeCriticalSection(&CS); }
   ~CFsFindContext() { ::DeleteCriticalSection(&CS); }
 };
+
+// ---------- search inside archives ----------
+
+// archive types that we open in "Search in archives only" mode.
+// (disk images like vhd / dmg are not here: they can be very big)
+static const char * const k_FindArcExts =
+    " 7z zip zipx rar 001 cab iso xz txz lzma tar cpio bz2 bzip2 tbz2 tbz gz gzip tgz tpz"
+    " z taz lzh lha rpm deb arj wim swm esd xar zst tzst jar apk ";
+
+static bool IsArchiveFileName(const UString &name)
+{
+  const int dot = name.ReverseFind_Dot();
+  if (dot < 0)
+    return false;
+  const wchar_t *ext = name.Ptr((unsigned)dot + 1);
+  char key[16];
+  unsigned k = 0;
+  key[k++] = ' ';
+  for (;;)
+  {
+    wchar_t c = *ext++;
+    if (c == 0)
+      break;
+    if (c >= 'A' && c <= 'Z')
+      c = (wchar_t)(c + 0x20);
+    if (c > 0x7F || k >= sizeof(key) - 2)
+      return false;
+    key[k++] = (char)c;
+  }
+  if (k == 1)
+    return false;
+  key[k++] = ' ';
+  key[k] = 0;
+  return strstr(k_FindArcExts, key) != NULL;
+}
+
+class CFindOpenCallback Z7_final: public IOpenCallbackUI
+{
+  Z7_IFACE_IMP(IOpenCallbackUI)
+public:
+  CFsFindContext *Ctx;
+  CFindOpenCallback(): Ctx(NULL) {}
+};
+
+HRESULT CFindOpenCallback::Open_CheckBreak()
+{
+  return Ctx->IsStopped() ? E_ABORT : S_OK;
+}
+
+HRESULT CFindOpenCallback::Open_SetTotal(const UInt64 * /* files */, const UInt64 * /* bytes */)
+{
+  return Open_CheckBreak();
+}
+
+HRESULT CFindOpenCallback::Open_SetCompleted(const UInt64 * /* files */, const UInt64 * /* bytes */)
+{
+  return Open_CheckBreak();
+}
+
+HRESULT CFindOpenCallback::Open_Finished()
+{
+  return S_OK;
+}
+
+#ifndef Z7_NO_CRYPTO
+HRESULT CFindOpenCallback::Open_CryptoGetTextPassword(BSTR *password)
+{
+  // archive with encrypted file names: we can't look inside it without password. We skip it.
+  *password = NULL;
+  return E_ABORT;
+}
+#endif
+
+static void FindInArchive(CFsFindContext &ctx, const UString &rel, const UString &arcName)
+{
+  if (!g_CodecsObj || ctx.IsStopped())
+    return;
+  UString arcPath = ctx.RootDir;
+  arcPath += rel;
+  arcPath += arcName;
+  // next volume of multi-volume archive, that was opened already
+  if (ctx.ProcessedVolumes.FindInSorted(arcPath) >= 0)
+    return;
+
+  const UString arcRel = rel + arcName;
+  ::EnterCriticalSection(&ctx.CS);
+  ctx.CurFolder = arcRel;
+  ::LeaveCriticalSection(&ctx.CS);
+
+  CObjectVector<COpenType> types;
+  CIntVector excludedFormats;
+  #ifndef Z7_SFX
+  CObjectVector<CProperty> props;
+  #endif
+  COpenOptions op;
+  #ifndef Z7_SFX
+  op.props = &props;
+  #endif
+  op.codecs = g_CodecsObj;
+  op.types = &types;
+  op.excludedFormats = &excludedFormats;
+  op.stdInMode = false;
+  op.stream = NULL;
+  op.filePath = arcPath;
+
+  CFindOpenCallback callback;
+  callback.Ctx = &ctx;
+  CArchiveLink arcLink;
+  HRESULT res = S_OK;
+  try { res = arcLink.Open_Strict(op, &callback); }
+  catch(...) { return; }
+  if (res != S_OK || arcLink.Arcs.IsEmpty())
+    return;
+
+  FOR_VECTOR (v, arcLink.VolumePaths)
+    ctx.ProcessedVolumes.AddToUniqueSorted(arcLink.VolumePaths[v]);
+
+  const CArc &arc = arcLink.Arcs.Back();
+  IInArchive *archive = arc.Archive;
+  if (!archive)
+    return;
+  UInt32 numItems = 0;
+  if (archive->GetNumberOfItems(&numItems) != S_OK)
+    return;
+
+  UString path;
+  for (UInt32 i = 0; i < numItems; i++)
+  {
+    if (ctx.IsStopped())
+      break;
+    if (arc.GetItem_Path2(i, path) != S_OK)
+      continue;
+    if (arc.Ask_AltStream)
+    {
+      bool isAltStream = false;
+      if (Archive_IsItem_AltStream(archive, i, isAltStream) == S_OK && isAltStream)
+        continue;
+    }
+    const int sep = path.ReverseFind_PathSepar();
+    const UString name (path.Ptr((unsigned)(sep + 1)));
+    if (name.IsEmpty() || !DoesWildcardMatchName(ctx.Mask, name))
+      continue;
+    UString dir (path);
+    dir.DeleteFrom((unsigned)(sep + 1));
+    UString folder = arcRel;
+    folder.Add_PathSepar();
+    folder += dir;
+    ::EnterCriticalSection(&ctx.CS);
+    if (ctx.Names.Size() >= kFindMaxResults)
+    {
+      ctx.TooMany = true;
+      ctx.SetStop();
+    }
+    else
+    {
+      ctx.Names.Add(name);
+      ctx.RelFolders.Add(folder);
+      ctx.ArcRels.Add(arcRel);
+    }
+    ::LeaveCriticalSection(&ctx.CS);
+  }
+}
 
 static void FsFind(CFsFindContext &ctx, const UString &rel, unsigned depth)
 {
@@ -686,6 +864,7 @@ static void FsFind(CFsFindContext &ctx, const UString &rel, unsigned depth)
     return;
 
   UStringVector subDirs;
+  UStringVector arcFiles;
   do
   {
     if (ctx.IsStopped())
@@ -695,7 +874,12 @@ static void FsFind(CFsFindContext &ctx, const UString &rel, unsigned depth)
       continue;
     const UString name (n);
     const bool isDir = (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
-    if (DoesWildcardMatchName(ctx.Mask, name))
+    if (ctx.ArchivesOnly)
+    {
+      if (!isDir && IsArchiveFileName(name))
+        arcFiles.Add(name);
+    }
+    else if (DoesWildcardMatchName(ctx.Mask, name))
     {
       ::EnterCriticalSection(&ctx.CS);
       if (ctx.Names.Size() >= kFindMaxResults)
@@ -717,6 +901,13 @@ static void FsFind(CFsFindContext &ctx, const UString &rel, unsigned depth)
   }
   while (::FindNextFileW(h, &fd));
   ::FindClose(h);
+
+  FOR_VECTOR (a, arcFiles)
+  {
+    if (ctx.IsStopped())
+      return;
+    FindInArchive(ctx, rel, arcFiles[a]);
+  }
 
   if (depth >= kFindMaxDepth)
     return;
@@ -826,14 +1017,20 @@ void CPanel::FindFiles()
 
   UString mask;
   {
-    CComboDialog dlg;
+    CFindDialog dlg;
     LangString(IDS_FIND_TITLE, dlg.Title);
     LangString(IDS_FIND_PROMPT, dlg.Static);
     dlg.Value = g_FindLastMask;
     dlg.Strings = g_FindHistory;
+    dlg.Subfolders = g_FindSubfolders;
+    dlg.ArchivesOnly = g_FindArchivesOnly;
+    dlg.ArchivesOnlyEnabled = IsFSFolder(); // inside archive we search in this archive
     if (dlg.Create(GetParent()) != IDOK)
       return;
     mask = dlg.Value;
+    g_FindSubfolders = dlg.Subfolders;
+    if (dlg.ArchivesOnlyEnabled)
+      g_FindArchivesOnly = dlg.ArchivesOnly;
   }
   mask.Trim();
   if (mask.IsEmpty())
@@ -859,6 +1056,7 @@ void CPanel::FindFiles()
   }
 
   const UString baseFolder = _currentFolderPrefix;
+  UStringVector arcRels; // for results inside archives (search in archives mode)
 
   CFindContext ctx;
   ctx.Mask = mask;
@@ -871,13 +1069,17 @@ void CPanel::FindFiles()
     CFsFindContext fs;
     fs.Mask = mask;
     fs.RootDir = GetLongPathForFind(baseFolder);
-    fs.Recursive = !_flatMode;
+    fs.Recursive = !_flatMode && g_FindSubfolders;
+    fs.ArchivesOnly = g_FindArchivesOnly;
+    if (fs.ArchivesOnly)
+      LoadGlobalCodecs();
     _statusBar.SetText(0, ctx.SearchingText);
     _statusBar.SetText(3, L"");
     FindFiles_FS(GetParent(), _statusBar, ctx.SearchingText, fs);
     _statusBar.SetText(3, L"");
     ctx.Names = fs.Names;
     ctx.RelFolders = fs.RelFolders;
+    arcRels = fs.ArcRels;
     ctx.TooMany = fs.TooMany;
     ctx.Cancelled = fs.IsStopped() && !fs.TooMany;
   }
@@ -888,7 +1090,7 @@ void CPanel::FindFiles()
     HCURSOR oldCursor = ::SetCursor(::LoadCursor(NULL, IDC_WAIT));
     _statusBar.SetText(0, ctx.SearchingText);
     _statusBar.SetText(3, L"");
-    FindInFolder(_folder, UString(), !_flatMode, 0, ctx);
+    FindInFolder(_folder, UString(), !_flatMode && g_FindSubfolders, 0, ctx);
     ::SetCursor(oldCursor);
     _statusBar.SetText(3, L"");
   }
@@ -926,7 +1128,12 @@ void CPanel::FindFiles()
   if (!rel.IsEmpty() || _currentFolderPrefix != baseFolder)
   {
     if (BindToPathAndRefresh(baseFolder + rel) != S_OK)
-      return;
+    {
+      // item inside archive: if the folder can't be opened, we open the archive itself
+      if ((unsigned)index >= arcRels.Size()
+          || BindToPathAndRefresh(baseFolder + arcRels[(unsigned)index]) != S_OK)
+        return;
+    }
   }
   CSelectedState state;
   state.FocusedName = name;
