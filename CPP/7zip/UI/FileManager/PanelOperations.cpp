@@ -640,6 +640,182 @@ static void FindInFolder(IFolderFolder *folder, const UString &relPrefix,
   }
 }
 
+// ---------- search in folders on disk: in separate thread ----------
+// UI thread keeps processing messages, so the window doesn't become "Not Responding".
+
+struct CFsFindContext
+{
+  UString Mask;
+  UString RootDir;      // with path separator at the end, can be long path (\\?\)
+  bool Recursive;
+  LONG StopFlag;        // it's changed by both threads: we use Interlocked functions
+  bool TooMany;
+  CRITICAL_SECTION CS;
+  // protected by CS:
+  UString CurFolder;
+  UStringVector Names;
+  UStringVector RelFolders;
+
+  bool IsStopped() { return ::InterlockedCompareExchange(&StopFlag, 0, 0) != 0; }
+  void SetStop() { ::InterlockedExchange(&StopFlag, 1); }
+
+  CFsFindContext(): Recursive(true), StopFlag(0), TooMany(false)
+    { ::InitializeCriticalSection(&CS); }
+  ~CFsFindContext() { ::DeleteCriticalSection(&CS); }
+};
+
+static void FsFind(CFsFindContext &ctx, const UString &rel, unsigned depth)
+{
+  if (ctx.IsStopped())
+    return;
+  ::EnterCriticalSection(&ctx.CS);
+  ctx.CurFolder = rel;
+  ::LeaveCriticalSection(&ctx.CS);
+
+  UString pattern = ctx.RootDir;
+  pattern += rel;
+  pattern += L'*';
+
+  WIN32_FIND_DATAW fd;
+  // 1 : FindExInfoBasic (no short names), 2 : FIND_FIRST_EX_LARGE_FETCH (Windows 7+)
+  HANDLE h = ::FindFirstFileExW(pattern, (FINDEX_INFO_LEVELS)1, &fd,
+      FindExSearchNameMatch, NULL, 2);
+  if (h == INVALID_HANDLE_VALUE)
+    h = ::FindFirstFileW(pattern, &fd);
+  if (h == INVALID_HANDLE_VALUE)
+    return;
+
+  UStringVector subDirs;
+  do
+  {
+    if (ctx.IsStopped())
+      break;
+    const wchar_t *n = fd.cFileName;
+    if (n[0] == '.' && (n[1] == 0 || (n[1] == '.' && n[2] == 0)))
+      continue;
+    const UString name (n);
+    const bool isDir = (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+    if (DoesWildcardMatchName(ctx.Mask, name))
+    {
+      ::EnterCriticalSection(&ctx.CS);
+      if (ctx.Names.Size() >= kFindMaxResults)
+      {
+        ctx.TooMany = true;
+        ctx.SetStop();
+      }
+      else
+      {
+        ctx.Names.Add(name);
+        ctx.RelFolders.Add(rel);
+      }
+      ::LeaveCriticalSection(&ctx.CS);
+    }
+    // we don't go into junctions and symbolic links: they can make endless loops
+    if (isDir && ctx.Recursive
+        && (fd.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) == 0)
+      subDirs.Add(name);
+  }
+  while (::FindNextFileW(h, &fd));
+  ::FindClose(h);
+
+  if (depth >= kFindMaxDepth)
+    return;
+  FOR_VECTOR (i, subDirs)
+  {
+    if (ctx.IsStopped())
+      return;
+    UString subRel = rel;
+    subRel += subDirs[i];
+    subRel.Add_PathSepar();
+    FsFind(ctx, subRel, depth + 1);
+  }
+}
+
+static DWORD WINAPI FsFindThread(LPVOID param)
+{
+  CFsFindContext &ctx = *(CFsFindContext *)param;
+  try { FsFind(ctx, UString(), 0); }
+  catch(...) {}
+  return 0;
+}
+
+// "C:\dir\" -> "\\?\C:\dir\" , "\\server\share\" -> "\\?\UNC\server\share\"
+static UString GetLongPathForFind(const UString &path)
+{
+  if (path.IsPrefixedBy(L"\\\\?\\") || path.IsPrefixedBy(L"\\\\.\\"))
+    return path;
+  if (path.Len() >= 2 && path.Ptr()[1] == L':')
+  {
+    UString s (L"\\\\?\\");
+    s += path;
+    return s;
+  }
+  if (path.IsPrefixedBy(L"\\\\"))
+  {
+    UString s (L"\\\\?\\UNC\\");
+    s += path.Ptr(2);
+    return s;
+  }
+  return path;
+}
+
+// searches in thread; UI messages are processed while waiting
+static void FindFiles_FS(HWND mainWindow, NWindows::NControl::CStatusBar &statusBar,
+    const UString &searchingText, CFsFindContext &ctx)
+{
+  DWORD threadID = 0;
+  HANDLE thread = ::CreateThread(NULL, 0, FsFindThread, &ctx, 0, &threadID);
+  if (!thread)
+  {
+    FsFind(ctx, UString(), 0);
+    return;
+  }
+  ::EnableWindow(mainWindow, FALSE);
+  DWORD lastTime = 0;
+  for (;;)
+  {
+    const DWORD res = ::MsgWaitForMultipleObjects(1, &thread, FALSE, 100, QS_ALLINPUT);
+    if (res == WAIT_OBJECT_0)
+      break;
+    MSG msg;
+    while (::PeekMessageW(&msg, NULL, 0, 0, PM_REMOVE))
+    {
+      if (msg.message == WM_QUIT)
+      {
+        ctx.SetStop();
+        ::PostQuitMessage((int)msg.wParam);
+        break;
+      }
+      if (msg.message == WM_KEYDOWN && msg.wParam == VK_ESCAPE)
+        ctx.SetStop();
+      ::TranslateMessage(&msg);
+      ::DispatchMessageW(&msg);
+    }
+    if (::GetForegroundWindow() == mainWindow && (::GetAsyncKeyState(VK_ESCAPE) & 0x8000))
+      ctx.SetStop();
+    const DWORD t = ::GetTickCount();
+    if (t - lastTime >= 200)
+    {
+      lastTime = t;
+      UString folder;
+      unsigned num;
+      ::EnterCriticalSection(&ctx.CS);
+      folder = ctx.CurFolder;
+      num = ctx.Names.Size();
+      ::LeaveCriticalSection(&ctx.CS);
+      UString s = searchingText;
+      s.Add_Space();
+      s.Add_UInt32(num);
+      statusBar.SetText(0, s);
+      statusBar.SetText(3, folder);
+    }
+  }
+  ::WaitForSingleObject(thread, INFINITE);
+  ::CloseHandle(thread);
+  ::EnableWindow(mainWindow, TRUE);
+  ::SetForegroundWindow(mainWindow);
+}
+
 void CPanel::FindFiles()
 {
   if (!_folder || (!IsFSFolder() && !IsArcFolder()))
@@ -688,7 +864,26 @@ void CPanel::FindFiles()
   ctx.Mask = mask;
   ctx.StatusBar = &_statusBar;
   LangString(IDS_FIND_SEARCHING, ctx.SearchingText);
+  if (IsFSFolder())
   {
+    // folder on disk: fast search in separate thread
+    CDisableTimerProcessing disableTimerProcessing(*this);
+    CFsFindContext fs;
+    fs.Mask = mask;
+    fs.RootDir = GetLongPathForFind(baseFolder);
+    fs.Recursive = !_flatMode;
+    _statusBar.SetText(0, ctx.SearchingText);
+    _statusBar.SetText(3, L"");
+    FindFiles_FS(GetParent(), _statusBar, ctx.SearchingText, fs);
+    _statusBar.SetText(3, L"");
+    ctx.Names = fs.Names;
+    ctx.RelFolders = fs.RelFolders;
+    ctx.TooMany = fs.TooMany;
+    ctx.Cancelled = fs.IsStopped() && !fs.TooMany;
+  }
+  else
+  {
+    // archive: items are in memory, so it's fast
     CDisableTimerProcessing disableTimerProcessing(*this);
     HCURSOR oldCursor = ::SetCursor(::LoadCursor(NULL, IDC_WAIT));
     _statusBar.SetText(0, ctx.SearchingText);
