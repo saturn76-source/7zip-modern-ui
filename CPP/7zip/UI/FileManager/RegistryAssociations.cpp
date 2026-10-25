@@ -124,6 +124,13 @@ LONG AddShellExtensionInfo(HKEY hkey,
     CKey extKey;
     res = extKey.Create(hkey, GetExtKeyPath(hkey, ext));
     extKey.SetValue(NULL, programKeyName);
+    {
+      // Windows "Open with" list shows this ProgId, so when the user picks 7-Zip there,
+      // Windows uses "7-Zip.ext" (with its own file type icon) instead of "Applications\7zFM.exe".
+      CKey openWithKey;
+      if (openWithKey.Create(extKey, TEXT("OpenWithProgids")) == ERROR_SUCCESS)
+        openWithKey.SetValue(programKeyName, TEXT(""));
+    }
     /*
     if (shellNewData != NULL)
     {
