@@ -1,5 +1,10 @@
 #include "resourceGui.h"
 
+#define IDI_7Z_FILE   2
+#define IDI_ZIP_FILE  3
+#define IDI_RAR_FILE  4
+#define IDI_ISO_FILE  5
+
 #define IDR_MENUBAR1      70
 #define IDM_MENU          71
 #define IDR_ACCELERATOR1  72
