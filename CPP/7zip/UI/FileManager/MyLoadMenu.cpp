@@ -434,6 +434,7 @@ void OnMenuActivating(HWND /* hWnd */, HMENU hMenu, int position)
     menu.CheckItemByID(IDM_VIEW_STANDARD_TOOLBAR, g_App.ShowStandardToolbar);
     menu.CheckItemByID(IDM_VIEW_TOOLBARS_LARGE_BUTTONS, g_App.LargeButtons);
     menu.CheckItemByID(IDM_VIEW_TOOLBARS_SHOW_BUTTONS_TEXT, g_App.ShowButtonsLables);
+    menu.CheckItemByID(IDM_VIEW_TOOLBARS_CLASSIC, g_App.ClassicIcons);
     {
       const NDarkMode::EThemeMode mode = NDarkMode::GetMode();
       menu.CheckItemByID(IDM_THEME_LIGHT, mode == NDarkMode::k_Theme_Light);
@@ -919,6 +920,7 @@ bool OnMenuCommand(HWND hWnd, unsigned id)
     case IDM_VIEW_TOOLBARS_SHOW_BUTTONS_TEXT: g_App.SwitchButtonsLables(); break;
     case IDM_VIEW_TOOLBARS_LARGE_BUTTONS:     g_App.SwitchLargeButtons(); break;
     case IDM_VIEW_TOOLBARS_CUSTOMIZE:         g_App.CustomizeToolbar(); break;
+    case IDM_VIEW_TOOLBARS_CLASSIC:           g_App.SwitchClassicIcons(); break;
 
     case IDM_VIEW_TIME_UTC:
       g_Timestamp_Show_UTC = !g_Timestamp_Show_UTC;

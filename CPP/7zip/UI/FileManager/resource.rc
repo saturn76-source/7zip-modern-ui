@@ -122,6 +122,7 @@ BEGIN
       MY_MENUITEM_SEPARATOR
       MENUITEM "Large Buttons",             IDM_VIEW_TOOLBARS_LARGE_BUTTONS
       MENUITEM "Show Buttons Text",         IDM_VIEW_TOOLBARS_SHOW_BUTTONS_TEXT
+      MENUITEM "Classic Icons",             IDM_VIEW_TOOLBARS_CLASSIC
       MY_MENUITEM_SEPARATOR
       MENUITEM "&Customize...",             IDM_VIEW_TOOLBARS_CUSTOMIZE
     END
@@ -186,6 +187,8 @@ IDB_TB72       BITMAP  "../../UI/FileManager/tb72.bmp"
 IDB_TB96       BITMAP  "../../UI/FileManager/tb96.bmp"
 IDB_TB16       BITMAP  "../../UI/FileManager/tb16.bmp"
 IDB_TB20       BITMAP  "../../UI/FileManager/tb20.bmp"
+IDB_TBC_L      BITMAP  "../../UI/FileManager/tbcL.bmp"
+IDB_TBC_S      BITMAP  "../../UI/FileManager/tbcS.bmp"
 IDB_UP16       BITMAP  "../../UI/FileManager/up16.bmp"
 IDB_UP20       BITMAP  "../../UI/FileManager/up20.bmp"
 IDB_UP24       BITMAP  "../../UI/FileManager/up24.bmp"

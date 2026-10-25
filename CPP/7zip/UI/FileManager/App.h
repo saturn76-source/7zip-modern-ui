@@ -18,6 +18,10 @@ const unsigned kNumPanelsMax = 2;
 
 extern bool g_IsSmallScreen;
 
+// "Classic Icons" option of toolbar (original 7-Zip icons). Saved in registry.
+bool ReadToolbarClassicIcons();
+void SaveToolbarClassicIcons(bool classic);
+
 // must be larger than context menu IDs
 const int kMenuCmdID_Toolbar_Start = 1070;
 const int kMenuCmdID_Plugin_Start = 1100;
@@ -106,6 +110,7 @@ public:
     _numHiddenToolbarCmds = 0;
     _chevronFont = NULL;
     _toolbarAdjusting = false;
+    ClassicIcons = false;
     SetPanels_AutoRefresh_Mode();
   }
 
@@ -270,8 +275,16 @@ public:
   void CreateChevron();
   void UpdateToolbarOverflow(int width);
   void ShowToolbarOverflowMenu();
+  bool ClassicIcons;
+  void SwitchClassicIcons()
+  {
+    ClassicIcons = !ClassicIcons;
+    SaveToolbarClassicIcons(ClassicIcons);
+    SaveToolbarChanges();
+  }
   void ReadToolbar()
   {
+    ClassicIcons = ReadToolbarClassicIcons();
     const UInt32 mask = ReadToolbarsMask();
     if (mask & ((UInt32)1 << 31))
     {

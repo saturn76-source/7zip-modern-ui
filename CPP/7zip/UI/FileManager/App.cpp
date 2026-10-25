@@ -247,7 +247,8 @@ static unsigned CreateToolbar(HWND parent,
     NControl::CImageList &imageList,
     NControl::CImageList &logoImageList,
     NControl::CToolBar &toolBar,
-    bool largeButtons)
+    bool largeButtons,
+    bool classic)
 {
   toolBar.Attach(::CreateWindowEx(0, TOOLBARCLASSNAME, NULL, 0
       | WS_CHILD
@@ -268,6 +269,23 @@ static unsigned CreateToolbar(HWND parent,
   // TB_BUTTONSTRUCTSIZE message, which is required for
   // backward compatibility.
   toolBar.ButtonStructSize();
+
+  if (classic)
+  {
+    // "Classic Icons": original 7-Zip icons, 48x36 (large) or 24x24 (small).
+    // No logo and default space around buttons, like in original 7-Zip.
+    const unsigned w = largeButtons ? 48 : 24;
+    const unsigned h = largeButtons ? 36 : 24;
+    imageList.Create((int)w, (int)h, ILC_COLOR32, (int)kNumToolbarImages, 0);
+    HBITMAP b = LoadAlphaBitmap(largeButtons ? IDB_TBC_L : IDB_TBC_S);
+    if (b)
+    {
+      imageList.Add(b);
+      ::DeleteObject(b);
+    }
+    toolBar.SetImageList(0, imageList);
+    return h;
+  }
 
   const CToolbarStripInfo &strip = GetToolbarStrip(largeButtons);
   const unsigned h = strip.Height;
@@ -444,6 +462,31 @@ static bool ReadToolbarLayout(CRecordVector<int> &layout)
   return true;
 }
 
+static const wchar_t * const k_Reg_ToolbarClassic = L"ToolbarClassicIcons";
+
+bool ReadToolbarClassicIcons()
+{
+  HKEY key;
+  if (::RegOpenKeyExW(HKEY_CURRENT_USER, k_Reg_FM, 0, KEY_READ, &key) != ERROR_SUCCESS)
+    return false;
+  DWORD value = 0;
+  DWORD type = 0;
+  DWORD size = sizeof(value);
+  const LONG res = ::RegQueryValueExW(key, k_Reg_ToolbarClassic, NULL, &type, (LPBYTE)&value, &size);
+  ::RegCloseKey(key);
+  return (res == ERROR_SUCCESS && type == REG_DWORD && value != 0);
+}
+
+void SaveToolbarClassicIcons(bool classic)
+{
+  HKEY key;
+  if (::RegCreateKeyExW(HKEY_CURRENT_USER, k_Reg_FM, 0, NULL, 0, KEY_WRITE, NULL, &key, NULL) != ERROR_SUCCESS)
+    return;
+  const DWORD value = classic ? 1 : 0;
+  ::RegSetValueExW(key, k_Reg_ToolbarClassic, 0, REG_DWORD, (const BYTE *)&value, sizeof(value));
+  ::RegCloseKey(key);
+}
+
 static void SaveToolbarLayout(const CRecordVector<int> &layout)
 {
   UString s;
@@ -543,7 +586,7 @@ void CApp::ReloadToolbars()
   // there is only one toolbar now.
   if (ShowArchiveToolbar || ShowStandardToolbar)
   {
-    _toolbarIconSize = CreateToolbar(_window, _buttonsImageList, _logoImageList, _toolBar, LargeButtons);
+    _toolbarIconSize = CreateToolbar(_window, _buttonsImageList, _logoImageList, _toolBar, LargeButtons, ClassicIcons);
     CRecordVector<int> layout;
     if (!ReadToolbarLayout(layout))
       GetDefaultToolbarLayout(layout);
@@ -630,6 +673,7 @@ void CApp::ShowToolbarContextMenu()
   const unsigned kCmd_Text = 101;
   const unsigned kCmd_Customize = 102;
   const unsigned kCmd_Reset = 103;
+  const unsigned kCmd_Classic = 104;
 
   HMENU menu = ::CreatePopupMenu();
   if (!menu)
@@ -645,6 +689,12 @@ void CApp::ShowToolbarContextMenu()
     if (s.IsEmpty())
       s = "Show Buttons Text";
     ::AppendMenuW(menu, MF_STRING | (ShowButtonsLables ? MF_CHECKED : MF_UNCHECKED), kCmd_Text, s);
+  }
+  {
+    UString s = GetMainMenuText(_window, IDM_VIEW_TOOLBARS_CLASSIC);
+    if (s.IsEmpty())
+      s = "Classic Icons";
+    ::AppendMenuW(menu, MF_STRING | (ClassicIcons ? MF_CHECKED : MF_UNCHECKED), kCmd_Classic, s);
   }
   ::AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
   {
@@ -672,6 +722,8 @@ void CApp::ShowToolbarContextMenu()
     ::PostMessage(_window, WM_COMMAND, IDM_VIEW_TOOLBARS_SHOW_BUTTONS_TEXT, 0);
   else if (cmd == kCmd_Customize)
     ::PostMessage(_window, WM_COMMAND, IDM_VIEW_TOOLBARS_CUSTOMIZE, 0);
+  else if (cmd == kCmd_Classic)
+    ::PostMessage(_window, WM_COMMAND, IDM_VIEW_TOOLBARS_CLASSIC, 0);
   else if (cmd == kCmd_Reset)
   {
     CRecordVector<int> layout;
@@ -994,7 +1046,8 @@ void CApp::ShowToolbarOverflowMenu()
       if ((d1 < 0 ? -d1 : d1) < (d0 < 0 ? -d0 : d0))
         best = k;
     }
-    strip = LoadAlphaBitmap(kIDs[best]);
+    // classic icons: small 24x24 classic strip
+    strip = LoadAlphaBitmap(ClassicIcons ? (UINT)IDB_TBC_S : kIDs[best]);
   }
 
   HBITMAP icons[32]; // same size as _hiddenToolbarCmds[]

@@ -31,6 +31,9 @@
 // small images for ">>" (chevron) menu
 #define IDB_TB16     177
 #define IDB_TB20     178
+// classic 7-Zip icons: large 48x36, small 24x24
+#define IDB_TBC_L    179
+#define IDB_TBC_S    187
 
 // big "up folder" button images (190 is used by IDB_MENU_LOGO in Explorer/resource2.rc)
 #define IDB_UP16     300
@@ -96,6 +99,7 @@
 #define IDM_THEME_AUTO           573
 #define IDM_VIEW_THEME           574
 #define IDM_VIEW_TOOLBARS_CUSTOMIZE 575
+#define IDM_VIEW_TOOLBARS_CLASSIC   576
 
 #define IDM_VER_EDIT             580
 #define IDM_VER_COMMIT           581
