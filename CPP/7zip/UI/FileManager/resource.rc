@@ -175,6 +175,7 @@ END
 
 
 IDI_ICON  ICON  "../../UI/FileManager/FM.ico"
+IDI_EASY_EXTRACT  ICON  "../../UI/FileManager/EasyExtract.ico"
 
 #ifndef UNDER_CE
 1  24  MOVEABLE PURE   "../../UI/FileManager/7zFM.exe.manifest"

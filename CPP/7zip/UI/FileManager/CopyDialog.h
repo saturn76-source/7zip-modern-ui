@@ -18,6 +18,8 @@ class CCopyDialog: public NWindows::NControl::CModalDialog
   virtual bool OnSize(WPARAM wParam, int xSize, int ySize) Z7_override;
   virtual bool OnButtonClicked(unsigned buttonID, HWND buttonHWND) Z7_override;
   void OnButtonSetPath();
+  HICON _icon;
+  int _iconSize;
 public:
   UString Title;
   UString Static;
@@ -30,7 +32,15 @@ public:
   bool OpenAfter;
   UString OpenOptionText;
 
-  CCopyDialog(): ShowOpenOption(false), OpenAfter(true) {}
+  // "Easy Extract": picture at the right side (icon resource), 0 - no picture
+  UINT IconResID;
+
+  CCopyDialog(): _icon(NULL), _iconSize(0), ShowOpenOption(false), OpenAfter(true), IconResID(0) {}
+  ~CCopyDialog()
+  {
+    if (_icon)
+      ::DestroyIcon(_icon);
+  }
 
   INT_PTR Create(HWND parentWindow = NULL) { return CModalDialog::Create(IDD_COPY, parentWindow); }
 };

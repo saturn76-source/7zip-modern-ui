@@ -246,6 +246,8 @@
 #define IDS_EASY_EXTRACT_TO             7223
 #define IDS_EASY_EXTRACT_OPEN           7224
 
+#define IDI_EASY_EXTRACT  210
+
 #define IDS_SPLITTING                   7303
 #define IDS_SPLIT_CONFIRM_TITLE         7304
 #define IDS_SPLIT_CONFIRM_MESSAGE       7305

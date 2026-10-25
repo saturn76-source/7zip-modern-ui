@@ -1484,6 +1484,7 @@ void CApp::OnCopy(bool move, bool copyToSame, unsigned srcPanelIndex, bool easyE
       LangString(IDS_EASY_EXTRACT_TO, copyDialog.Static);
       LangString(IDS_EASY_EXTRACT_OPEN, copyDialog.OpenOptionText);
       copyDialog.ShowOpenOption = true;
+      copyDialog.IconResID = IDI_EASY_EXTRACT;
       copyDialog.OpenAfter = g_EasyExtract_OpenAfter;
     }
 

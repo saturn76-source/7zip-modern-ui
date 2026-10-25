@@ -12,6 +12,8 @@
 
 using namespace NWindows;
 
+extern HINSTANCE g_hInstance;
+
 bool CCopyDialog::OnInit()
 {
   #ifdef Z7_LANG
@@ -39,6 +41,25 @@ bool CCopyDialog::OnInit()
   }
   else
     ShowItem_Bool(IDX_COPY_OPEN, false);
+  if (IconResID != 0)
+  {
+    int dpi = 96;
+    const HDC dc = ::GetDC(NULL);
+    if (dc)
+    {
+      dpi = ::GetDeviceCaps(dc, LOGPIXELSY);
+      ::ReleaseDC(NULL, dc);
+    }
+    if (dpi <= 0)
+      dpi = 96;
+    _iconSize = 64 * dpi / 96;
+    _icon = (HICON)::LoadImageW(g_hInstance, MAKEINTRESOURCEW(IconResID),
+        IMAGE_ICON, _iconSize, _iconSize, LR_DEFAULTCOLOR);
+    if (_icon)
+      ::SendDlgItemMessageW(*this, IDC_COPY_ICON, STM_SETICON, (WPARAM)_icon, 0);
+  }
+  if (!_icon)
+    ShowItem_Bool(IDC_COPY_ICON, false);
   NormalizeSize(true);
   return CModalDialog::OnInit();
 }
@@ -69,7 +90,14 @@ bool CCopyDialog::OnSize(WPARAM /* wParam */, int xSize, int ySize)
     NControl::CStatic staticContol;
     staticContol.Attach(GetItem(IDT_COPY_INFO));
     const int yPos = r.top;
-    staticContol.Move(mx, yPos, xSize - mx * 2, y - 2 - yPos);
+    int infoWidth = xSize - mx * 2;
+    if (_icon)
+    {
+      // picture at the right side of info text
+      infoWidth -= _iconSize + mx;
+      MoveItem(IDC_COPY_ICON, xSize - mx - _iconSize, yPos, _iconSize, _iconSize);
+    }
+    staticContol.Move(mx, yPos, infoWidth, y - 2 - yPos);
   }
 
   MoveItem(IDCANCEL, x, y, bx1, by);
