@@ -2,6 +2,8 @@
 
 #include "StdAfx.h"
 
+#include <shellapi.h>
+
 #include "resource.h"
 #include "OverwriteDialogRes.h"
 
@@ -387,7 +389,7 @@ static const CButtonInfo g_Buttons[] =
   { IDM_FILE_VIEW,              3, IDS_BUTTON_VIEW,    true, false, true  },
   { IDM_DELETE,                 4, IDS_BUTTON_DELETE,  true, false, true  },
   { IDM_FIND_FILES,             5, IDS_BUTTON_FIND,    true, false, true  },
-  { IDM_OPTIONS,                6, IDS_BUTTON_WIZARD,  true, false, true  },
+  { IDM_EASY_EXTRACT,           6, IDS_BUTTON_WIZARD,  true, false, true  },
   { IDM_PROPERTIES,             7, IDS_BUTTON_INFO,    true, false, true  },
   { IDM_COMMENT,                8, IDS_BUTTON_COMMENT, true, true,  true  },
   // new buttons must be added only at the end of table (saved layouts use indexes)
@@ -1384,8 +1386,23 @@ static bool IsFsPath(const FString &path)
 }
 */
 
-void CApp::OnCopy(bool move, bool copyToSame, unsigned srcPanelIndex)
+// function from ContextMenu.cpp: archive name without extension
+UString GetSubFolderNameForExtract(const UString &arcName);
+
+static bool g_EasyExtract_OpenAfter = true;
+
+// opens the folder in Windows File Explorer
+void OpenFolderInExplorer(const UString &folder);
+void OpenFolderInExplorer(const UString &folder)
 {
+  if (folder.IsEmpty())
+    return;
+  ::ShellExecuteW(NULL, L"open", folder, NULL, NULL, SW_SHOWNORMAL);
+}
+
+void CApp::OnCopy(bool move, bool copyToSame, unsigned srcPanelIndex, bool easyExtract)
+{
+  bool openAfter = false;
   const unsigned destPanelIndex = (NumPanels <= 1) ? srcPanelIndex : (1 - srcPanelIndex);
   CPanel &srcPanel = Panels[srcPanelIndex];
   CPanel &destPanel = Panels[destPanelIndex];
@@ -1428,6 +1445,21 @@ void CApp::OnCopy(bool move, bool copyToSame, unsigned srcPanelIndex)
       destPath = destPanel.GetFsPath();
       if (NumPanels == 1)
         Reduce_Path_To_RealFileSystemPath(destPath);
+      if (easyExtract && !srcPanel._parentFolders.IsEmpty())
+      {
+        // add folder with archive name (without extension)
+        const UString &arcPath = srcPanel._parentFolders[0].VirtualPath;
+        const int slash = arcPath.ReverseFind_PathSepar();
+        const UString arcName (arcPath.Ptr((unsigned)(slash + 1)));
+        const UString sub = GetSubFolderNameForExtract(arcName);
+        if (!sub.IsEmpty())
+        {
+          if (!destPath.IsEmpty() && !IS_PATH_SEPAR(destPath.Back()))
+            destPath.Add_PathSepar();
+          destPath += sub;
+          destPath.Add_PathSepar();
+        }
+      }
     }
   }
   
@@ -1444,11 +1476,38 @@ void CApp::OnCopy(bool move, bool copyToSame, unsigned srcPanelIndex)
     LangString(move ? IDS_MOVE : IDS_COPY, copyDialog.Title);
     LangString(move ? IDS_MOVE_TO : IDS_COPY_TO, copyDialog.Static);
     copyDialog.Info = srcPanel.GetItemsInfoString(indices);
+    if (easyExtract)
+    {
+      // info text: archive name without extension, like in "Extract to" path
+      if (!srcPanel._parentFolders.IsEmpty())
+      {
+        const UString &arcPath = srcPanel._parentFolders[0].VirtualPath;
+        if (copyDialog.Info.IsPrefixedBy(arcPath))
+        {
+          const int slash = arcPath.ReverseFind_PathSepar();
+          UString s = arcPath;
+          s.DeleteFrom((unsigned)(slash + 1));
+          s += GetSubFolderNameForExtract(UString(arcPath.Ptr((unsigned)(slash + 1))));
+          s += copyDialog.Info.Ptr(arcPath.Len());
+          copyDialog.Info = s;
+        }
+      }
+      LangString(IDS_EASY_EXTRACT, copyDialog.Title);
+      LangString(IDS_EASY_EXTRACT_TO, copyDialog.Static);
+      LangString(IDS_EASY_EXTRACT_OPEN, copyDialog.OpenOptionText);
+      copyDialog.ShowOpenOption = true;
+      copyDialog.OpenAfter = g_EasyExtract_OpenAfter;
+    }
 
     if (copyDialog.Create(srcPanel.GetParent()) != IDOK)
       return;
 
     destPath = copyDialog.Value;
+    if (easyExtract)
+    {
+      g_EasyExtract_OpenAfter = copyDialog.OpenAfter;
+      openAfter = copyDialog.OpenAfter;
+    }
   }
 
   {
@@ -1675,6 +1734,10 @@ void CApp::OnCopy(bool move, bool copyToSame, unsigned srcPanelIndex)
   disableNotify1.Restore();
   disableNotify2.Restore();
   srcPanel.SetFocusToList();
+
+  // "Easy Extract": open the extracted files folder in Windows File Explorer
+  if (easyExtract && openAfter && result == S_OK && !destPath.IsEmpty())
+    OpenFolderInExplorer(destPath);
 }
 
 void CApp::OnSetSameFolder(unsigned srcPanelIndex)

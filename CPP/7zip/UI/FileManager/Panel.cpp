@@ -1048,6 +1048,63 @@ static UString GetSubFolderNameForExtract2(const UString &arcPath)
 }
 
 
+void OpenFolderInExplorer(const UString &folder); // App.cpp
+
+/*
+  "Easy Extract" (toolbar button, Tools menu):
+  like "Extract to "ArchiveName\"" in Explorer context menu:
+  each selected archive is extracted (without questions) to the folder
+  with archive name, next to the archive.
+  When it's done, the extracted folder is opened in Windows File Explorer.
+*/
+void CPanel::EasyExtract()
+{
+  if (!IsFSFolder())
+  {
+    // inside archive: normal extract
+    ExtractArchives();
+    return;
+  }
+  CRecordVector<UInt32> indices;
+  Get_ItemIndices_Operated(indices);
+  if (indices.IsEmpty() || FindDir_InOperatedList(indices) != -1)
+  {
+    MessageBox_Error_LangID(IDS_SELECT_FILES);
+    return;
+  }
+  UStringVector paths;
+  GetFilePaths(indices, paths);
+
+  const UString fsPath = GetFsPath();
+  // folder for first archive: we open it after extracting
+  UString firstFolder = fsPath;
+  firstFolder += GetSubFolderNameForExtract2(GetItemRelPath(indices[0]));
+  firstFolder.Add_PathSepar();
+
+  UString outFolder = fsPath;
+  if (indices.Size() == 1)
+    outFolder += GetSubFolderNameForExtract2(GetItemRelPath(indices[0]));
+  else
+    outFolder.Add_Char('*'); // 7-Zip replaces '*' with name of each archive
+  outFolder.Add_PathSepar();
+
+  CContextMenuInfo ci;
+  ci.Load();
+  ::ExtractArchives(paths, outFolder
+      , false  // showDialog: no questions
+      , ci.ElimDup.Val // like "Extract to" in context menu: no duplicated root folder
+      , ci.WriteZone
+      );
+
+  // open the extracted files folder in Windows File Explorer
+  RefreshListCtrl();
+  UString checkPath = firstFolder;
+  checkPath.DeleteBack();
+  const DWORD attrib = ::GetFileAttributesW(checkPath);
+  if (attrib != INVALID_FILE_ATTRIBUTES && (attrib & FILE_ATTRIBUTE_DIRECTORY) != 0)
+    OpenFolderInExplorer(firstFolder);
+}
+
 int CPanel::FindDir_InOperatedList(const CRecordVector<UInt32> &operatedIndices) const
 {
   const bool *isDirVector = _isDirVector.ConstData();

@@ -31,6 +31,14 @@ bool CCopyDialog::OnInit()
     _path.AddString(Strings[i]);
   _path.SetText(Value);
   SetItemText(IDT_COPY_INFO, Info);
+  if (ShowOpenOption)
+  {
+    if (!OpenOptionText.IsEmpty())
+      SetItemText(IDX_COPY_OPEN, OpenOptionText);
+    CheckButton(IDX_COPY_OPEN, OpenAfter);
+  }
+  else
+    ShowItem_Bool(IDX_COPY_OPEN, false);
   NormalizeSize(true);
   return CModalDialog::OnInit();
 }
@@ -66,6 +74,16 @@ bool CCopyDialog::OnSize(WPARAM /* wParam */, int xSize, int ySize)
 
   MoveItem(IDCANCEL, x, y, bx1, by);
   MoveItem(IDOK, x - mx - bx2, y, bx2, by);
+  {
+    // check box at the left of OK / Cancel buttons
+    RECT r;
+    GetClientRectOfItem(IDX_COPY_OPEN, r);
+    const int cy = RECT_SIZE_Y(r);
+    int cx = x - mx - bx2 - mx - mx;
+    if (cx < 10)
+      cx = 10;
+    MoveItem(IDX_COPY_OPEN, mx, y + (by - cy) / 2, cx, cy);
+  }
 
   return false;
 }
@@ -99,5 +117,7 @@ void CCopyDialog::OnButtonSetPath()
 void CCopyDialog::OnOK()
 {
   _path.GetText(Value);
+  if (ShowOpenOption)
+    OpenAfter = IsButtonCheckedBool(IDX_COPY_OPEN);
   CModalDialog::OnOK();
 }

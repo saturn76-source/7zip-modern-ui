@@ -154,6 +154,8 @@ BEGIN
   BEGIN
     MENUITEM "&Options...",                 IDM_OPTIONS
     MY_MENUITEM_SEPARATOR
+    MENUITEM "&Easy Extract",               IDM_EASY_EXTRACT
+    MY_MENUITEM_SEPARATOR
     MENUITEM "&Benchmark",                  IDM_BENCHMARK
   #ifdef UNDER_CE
     MENUITEM "Benchmark 2",                 IDM_BENCHMARK2
@@ -280,7 +282,7 @@ BEGIN
   IDS_BUTTON_INFO    "Info"
   IDS_BUTTON_VIEW    "View"
   IDS_BUTTON_FIND    "Find"
-  IDS_BUTTON_WIZARD  "Wizard"
+  IDS_BUTTON_WIZARD  "Easy Extract"
   IDS_BUTTON_COMMENT "Comment"
   IDS_BUTTON_ABOUT   "About 7-Zip"
 
@@ -294,6 +296,9 @@ BEGIN
   IDS_FIND_FOUND       "Found: {0}"
   IDS_FIND_STOPPING    "Stopping..."
   IDS_FIND_BAD_LOCATION "Cannot find the folder:\n{0}"
+  IDS_EASY_EXTRACT      "Easy Extract"
+  IDS_EASY_EXTRACT_TO   "Extract to:"
+  IDS_EASY_EXTRACT_OPEN "Open the extracted files folder when done"
 
   IDS_SPLITTING            "Splitting..."
   IDS_SPLIT_CONFIRM_TITLE  "Confirm Splitting"

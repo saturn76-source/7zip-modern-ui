@@ -119,7 +119,9 @@ public:
   void DragBegin(unsigned panelIndex);
   void DragEnd();
   
-  void OnCopy(bool move, bool copyToSame, unsigned srcPanelIndex);
+  // easyExtract: "Easy Extract" from archive: title, "Extract to:", folder with archive name,
+  //   and "Open the extracted files folder when done" option
+  void OnCopy(bool move, bool copyToSame, unsigned srcPanelIndex, bool easyExtract = false);
   void OnSetSameFolder(unsigned srcPanelIndex);
   void OnSetSubFolder(unsigned srcPanelIndex);
 
@@ -338,6 +340,14 @@ public:
 
   void AddToArchive() { GetFocusedPanel().AddToArchive(); }
   void FindFiles() { GetFocusedPanel().FindFiles(); }
+  void EasyExtract()
+  {
+    CPanel &panel = GetFocusedPanel();
+    if (!panel._parentFolders.IsEmpty())
+      OnCopy(false, false, GetFocusedPanelIndex(), true); // we are inside archive
+    else
+      panel.EasyExtract();
+  }
   void ApplyTheme();
   void SetThemeMode(int mode);
   void ExtractArchives() { GetFocusedPanel().ExtractArchives(); }

@@ -100,6 +100,7 @@
 #define IDM_VIEW_THEME           574
 #define IDM_VIEW_TOOLBARS_CUSTOMIZE 575
 #define IDM_VIEW_TOOLBARS_CLASSIC   576
+#define IDM_EASY_EXTRACT            577
 
 #define IDM_VER_EDIT             580
 #define IDM_VER_COMMIT           581
@@ -241,6 +242,9 @@
 #define IDS_FIND_FOUND                  7219
 #define IDS_FIND_STOPPING               7220
 #define IDS_FIND_BAD_LOCATION           7221
+#define IDS_EASY_EXTRACT                7222
+#define IDS_EASY_EXTRACT_TO             7223
+#define IDS_EASY_EXTRACT_OPEN           7224
 
 #define IDS_SPLITTING                   7303
 #define IDS_SPLIT_CONFIRM_TITLE         7304

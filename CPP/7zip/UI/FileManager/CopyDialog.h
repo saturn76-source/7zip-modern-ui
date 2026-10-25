@@ -25,6 +25,13 @@ public:
   UString Info;
   UStringVector Strings;
 
+  // "Easy Extract": check box "Open the extracted files folder when done"
+  bool ShowOpenOption;
+  bool OpenAfter;
+  UString OpenOptionText;
+
+  CCopyDialog(): ShowOpenOption(false), OpenAfter(true) {}
+
   INT_PTR Create(HWND parentWindow = NULL) { return CModalDialog::Create(IDD_COPY, parentWindow); }
 };
 

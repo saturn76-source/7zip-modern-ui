@@ -851,6 +851,7 @@ bool OnMenuCommand(HWND hWnd, unsigned id)
     case IDM_THEME_LIGHT: g_App.SetThemeMode(NDarkMode::k_Theme_Light); break;
     case IDM_THEME_DARK:  g_App.SetThemeMode(NDarkMode::k_Theme_Dark); break;
     case IDM_THEME_AUTO:  g_App.SetThemeMode(NDarkMode::k_Theme_Auto); break;
+    case IDM_EASY_EXTRACT: g_App.EasyExtract(); break;
     case IDM_FIND_FILES:
       g_App.FindFiles();
       break;

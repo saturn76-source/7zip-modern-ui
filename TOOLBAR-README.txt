@@ -27,7 +27,7 @@ BUTTONS (edit table g_Buttons[] in App.cpp to change them)
   Delete    -> Delete (Del)
   Find      -> Find files (Edit > Find..., Ctrl+F). Options: search in subfolders,
                search in archives only (looks inside zip, 7z, rar ... files)
-  Wizard    -> Options
+  Easy Extract -> extract selected archives to "ArchiveName\" folders, then open the folder in File Explorer (also Tools menu)
   Info      -> Properties (Alt+Enter)
   Comment   -> File > Comment (Ctrl+Z)
 
