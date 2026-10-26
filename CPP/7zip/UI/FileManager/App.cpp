@@ -1459,7 +1459,7 @@ static bool IsFsPath(const FString &path)
 // function from ContextMenu.cpp: archive name without extension
 UString GetSubFolderNameForExtract(const UString &arcName);
 
-static bool g_EasyExtract_OpenAfter = true;
+bool g_EasyExtract_OpenAfter = true; // also used in Panel.cpp
 
 // opens the folder in Windows File Explorer
 void OpenFolderInExplorer(const UString &folder);

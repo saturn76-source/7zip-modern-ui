@@ -30,6 +30,7 @@
 #include "LangUtils.h"
 #include "Panel.h"
 #include "DarkMode.h"
+#include "CopyDialog.h"
 #include "RootFolder.h"
 
 #include "PropertyNameRes.h"
@@ -1049,6 +1050,7 @@ static UString GetSubFolderNameForExtract2(const UString &arcPath)
 
 
 void OpenFolderInExplorer(const UString &folder); // App.cpp
+extern bool g_EasyExtract_OpenAfter; // App.cpp
 
 /*
   "Easy Extract" (toolbar button, Tools menu):
@@ -1076,17 +1078,71 @@ void CPanel::EasyExtract()
   GetFilePaths(indices, paths);
 
   const UString fsPath = GetFsPath();
-  // folder for first archive: we open it after extracting
-  UString firstFolder = fsPath;
-  firstFolder += GetSubFolderNameForExtract2(GetItemRelPath(indices[0]));
-  firstFolder.Add_PathSepar();
-
   UString outFolder = fsPath;
   if (indices.Size() == 1)
     outFolder += GetSubFolderNameForExtract2(GetItemRelPath(indices[0]));
   else
     outFolder.Add_Char('*'); // 7-Zip replaces '*' with name of each archive
   outFolder.Add_PathSepar();
+
+  // "Easy Extract" dialog: user can change the folder and "open when done" option
+  bool openAfter = true;
+  {
+    CCopyDialog dialog;
+    dialog.Value = outFolder;
+    dialog.Info = GetItemsInfoString(indices);
+    if (outFolder.Find(L'*') >= 0)
+    {
+      // explanation of '*' in "Extract to" path
+      UString star;
+      LangString(IDS_EASY_EXTRACT_STAR, star);
+      star += "\n\n";
+      dialog.Info.Insert(0, star);
+    }
+    LangString(IDS_EASY_EXTRACT, dialog.Title);
+    LangString(IDS_EASY_EXTRACT_TO, dialog.Static);
+    LangString(IDS_EASY_EXTRACT_OPEN, dialog.OpenOptionText);
+    dialog.ShowOpenOption = true;
+    dialog.IconResID = IDI_EASY_EXTRACT;
+    dialog.OpenAfter = g_EasyExtract_OpenAfter;
+    if (dialog.Create(GetParent()) != IDOK)
+      return;
+    g_EasyExtract_OpenAfter = dialog.OpenAfter;
+    openAfter = dialog.OpenAfter;
+    outFolder = dialog.Value;
+    outFolder.Trim();
+    if (outFolder.IsEmpty())
+      return;
+    if (!IS_PATH_SEPAR(outFolder.Back()))
+      outFolder.Add_PathSepar();
+    // relative path: from current folder
+    if (!NWindows::NFile::NName::IsAbsolutePath(outFolder))
+      outFolder.Insert(0, fsPath);
+  }
+
+  // folders that we open after extracting: '*' is replaced with name of each archive
+  UStringVector openFolders;
+  {
+    const int star = outFolder.Find(L'*');
+    FOR_VECTOR (i, indices)
+    {
+      UString folder = outFolder;
+      if (star >= 0)
+      {
+        folder.Delete((unsigned)star);
+        folder.Insert((unsigned)star, GetSubFolderNameForExtract2(GetItemRelPath(indices[i])));
+      }
+      bool found = false;
+      FOR_VECTOR (k, openFolders)
+        if (openFolders[k].IsEqualTo_NoCase(folder))
+        {
+          found = true;
+          break;
+        }
+      if (!found)
+        openFolders.Add(folder);
+    }
+  }
 
   CContextMenuInfo ci;
   ci.Load();
@@ -1096,13 +1152,22 @@ void CPanel::EasyExtract()
       , ci.WriteZone
       );
 
-  // open the extracted files folder in Windows File Explorer
+  if (!openAfter)
+  {
+    RefreshListCtrl();
+    return;
+  }
+
+  // open all extracted files folders in Windows File Explorer
   RefreshListCtrl();
-  UString checkPath = firstFolder;
-  checkPath.DeleteBack();
-  const DWORD attrib = ::GetFileAttributesW(checkPath);
-  if (attrib != INVALID_FILE_ATTRIBUTES && (attrib & FILE_ATTRIBUTE_DIRECTORY) != 0)
-    OpenFolderInExplorer(firstFolder);
+  FOR_VECTOR (i, openFolders)
+  {
+    UString checkPath = openFolders[i];
+    checkPath.DeleteBack();
+    const DWORD attrib = ::GetFileAttributesW(checkPath);
+    if (attrib != INVALID_FILE_ATTRIBUTES && (attrib & FILE_ATTRIBUTE_DIRECTORY) != 0)
+      OpenFolderInExplorer(openFolders[i]);
+  }
 }
 
 int CPanel::FindDir_InOperatedList(const CRecordVector<UInt32> &operatedIndices) const
