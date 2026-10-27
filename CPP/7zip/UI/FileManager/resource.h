@@ -50,6 +50,16 @@
 #define IDB_UP48     306
 #define IDB_UP56     307
 #define IDB_UP64     308
+// "Modern 2" toolbar icons (flat color tiles)
+#define IDB_TB2_16   320
+#define IDB_TB2_20   321
+#define IDB_TB2_24   322
+#define IDB_TB2_32   323
+#define IDB_TB2_40   324
+#define IDB_TB2_48   325
+#define IDB_TB2_64   326
+#define IDB_TB2_72   327
+#define IDB_TB2_96   328
 
 #define IDB_LOGO24   180
 #define IDB_LOGO32   181
@@ -109,6 +119,8 @@
 #define IDM_VIEW_ZOOM_IN            560
 #define IDM_VIEW_ZOOM_OUT           561
 #define IDM_VIEW_ZOOM_RESET         562
+#define IDM_VIEW_TOOLBARS_MODERN1   563
+#define IDM_VIEW_TOOLBARS_MODERN2   564
 
 #define IDM_VER_EDIT             580
 #define IDM_VER_COMMIT           581

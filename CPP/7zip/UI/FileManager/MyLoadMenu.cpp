@@ -434,7 +434,9 @@ void OnMenuActivating(HWND /* hWnd */, HMENU hMenu, int position)
     menu.CheckItemByID(IDM_VIEW_STANDARD_TOOLBAR, g_App.ShowStandardToolbar);
     menu.CheckItemByID(IDM_VIEW_TOOLBARS_LARGE_BUTTONS, g_App.LargeButtons);
     menu.CheckItemByID(IDM_VIEW_TOOLBARS_SHOW_BUTTONS_TEXT, g_App.ShowButtonsLables);
-    menu.CheckItemByID(IDM_VIEW_TOOLBARS_CLASSIC, g_App.ClassicIcons);
+    menu.CheckItemByID(IDM_VIEW_TOOLBARS_MODERN1, g_App.IconStyle == k_IconStyle_Modern1);
+    menu.CheckItemByID(IDM_VIEW_TOOLBARS_MODERN2, g_App.IconStyle == k_IconStyle_Modern2);
+    menu.CheckItemByID(IDM_VIEW_TOOLBARS_CLASSIC, g_App.IconStyle == k_IconStyle_Classic);
     {
       const NDarkMode::EThemeMode mode = NDarkMode::GetMode();
       menu.CheckItemByID(IDM_THEME_LIGHT, mode == NDarkMode::k_Theme_Light);
@@ -921,7 +923,9 @@ bool OnMenuCommand(HWND hWnd, unsigned id)
     case IDM_VIEW_TOOLBARS_SHOW_BUTTONS_TEXT: g_App.SwitchButtonsLables(); break;
     case IDM_VIEW_TOOLBARS_LARGE_BUTTONS:     g_App.SwitchLargeButtons(); break;
     case IDM_VIEW_TOOLBARS_CUSTOMIZE:         g_App.CustomizeToolbar(); break;
-    case IDM_VIEW_TOOLBARS_CLASSIC:           g_App.SwitchClassicIcons(); break;
+    case IDM_VIEW_TOOLBARS_MODERN1:           g_App.SetIconStyle(k_IconStyle_Modern1); break;
+    case IDM_VIEW_TOOLBARS_MODERN2:           g_App.SetIconStyle(k_IconStyle_Modern2); break;
+    case IDM_VIEW_TOOLBARS_CLASSIC:           g_App.SetIconStyle(k_IconStyle_Classic); break;
     case IDM_VIEW_ZOOM_IN:    g_App.ZoomList(1); break;
     case IDM_VIEW_ZOOM_OUT:   g_App.ZoomList(-1); break;
     case IDM_VIEW_ZOOM_RESET: g_App.ZoomList(0); break;

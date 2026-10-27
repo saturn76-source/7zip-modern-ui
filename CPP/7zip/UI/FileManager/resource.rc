@@ -131,6 +131,9 @@ BEGIN
       MY_MENUITEM_SEPARATOR
       MENUITEM "Large Buttons",             IDM_VIEW_TOOLBARS_LARGE_BUTTONS
       MENUITEM "Show Buttons Text",         IDM_VIEW_TOOLBARS_SHOW_BUTTONS_TEXT
+      MY_MENUITEM_SEPARATOR
+      MENUITEM "Modern 1 Icons",            IDM_VIEW_TOOLBARS_MODERN1
+      MENUITEM "Modern 2 Icons",            IDM_VIEW_TOOLBARS_MODERN2
       MENUITEM "Classic Icons",             IDM_VIEW_TOOLBARS_CLASSIC
       MY_MENUITEM_SEPARATOR
       MENUITEM "&Customize...",             IDM_VIEW_TOOLBARS_CUSTOMIZE
@@ -247,6 +250,15 @@ IDB_UP40       BITMAP  "../../UI/FileManager/up40.bmp"
 IDB_UP48       BITMAP  "../../UI/FileManager/up48.bmp"
 IDB_UP56       BITMAP  "../../UI/FileManager/up56.bmp"
 IDB_UP64       BITMAP  "../../UI/FileManager/up64.bmp"
+IDB_TB2_16     BITMAP  "../../UI/FileManager/tb2_16.bmp"
+IDB_TB2_20     BITMAP  "../../UI/FileManager/tb2_20.bmp"
+IDB_TB2_24     BITMAP  "../../UI/FileManager/tb2_24.bmp"
+IDB_TB2_32     BITMAP  "../../UI/FileManager/tb2_32.bmp"
+IDB_TB2_40     BITMAP  "../../UI/FileManager/tb2_40.bmp"
+IDB_TB2_48     BITMAP  "../../UI/FileManager/tb2_48.bmp"
+IDB_TB2_64     BITMAP  "../../UI/FileManager/tb2_64.bmp"
+IDB_TB2_72     BITMAP  "../../UI/FileManager/tb2_72.bmp"
+IDB_TB2_96     BITMAP  "../../UI/FileManager/tb2_96.bmp"
 IDB_LOGO24     BITMAP  "../../UI/FileManager/logo24.bmp"
 IDB_LOGO32     BITMAP  "../../UI/FileManager/logo32.bmp"
 IDB_LOGO40     BITMAP  "../../UI/FileManager/logo40.bmp"

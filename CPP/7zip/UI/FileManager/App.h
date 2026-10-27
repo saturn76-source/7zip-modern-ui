@@ -18,9 +18,15 @@ const unsigned kNumPanelsMax = 2;
 
 extern bool g_IsSmallScreen;
 
-// "Classic Icons" option of toolbar (original 7-Zip icons). Saved in registry.
-bool ReadToolbarClassicIcons();
-void SaveToolbarClassicIcons(bool classic);
+// style of toolbar icons. Saved in registry.
+enum
+{
+  k_IconStyle_Modern1 = 0, // 3D icons (WinRAR like)
+  k_IconStyle_Modern2 = 1, // flat color tiles
+  k_IconStyle_Classic = 2  // original 7-Zip icons
+};
+int ReadToolbarIconStyle();
+void SaveToolbarIconStyle(int style);
 
 // must be larger than context menu IDs
 const int kMenuCmdID_Toolbar_Start = 1070;
@@ -110,7 +116,7 @@ public:
     _numHiddenToolbarCmds = 0;
     _chevronFont = NULL;
     _toolbarAdjusting = false;
-    ClassicIcons = false;
+    IconStyle = k_IconStyle_Modern1;
     SetPanels_AutoRefresh_Mode();
   }
 
@@ -277,16 +283,18 @@ public:
   void CreateChevron();
   void UpdateToolbarOverflow(int width);
   void ShowToolbarOverflowMenu();
-  bool ClassicIcons;
-  void SwitchClassicIcons()
+  int IconStyle;
+  void SetIconStyle(int style)
   {
-    ClassicIcons = !ClassicIcons;
-    SaveToolbarClassicIcons(ClassicIcons);
+    if (IconStyle == style)
+      return;
+    IconStyle = style;
+    SaveToolbarIconStyle(IconStyle);
     SaveToolbarChanges();
   }
   void ReadToolbar()
   {
-    ClassicIcons = ReadToolbarClassicIcons();
+    IconStyle = ReadToolbarIconStyle();
     const UInt32 mask = ReadToolbarsMask();
     if (mask & ((UInt32)1 << 31))
     {

@@ -213,6 +213,19 @@ static HBITMAP LoadAlphaBitmap(UINT resID)
       IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION);
 }
 
+// bitmap of toolbar icons for "Modern 1" / "Modern 2" style and icon size
+static UINT GetStripResID(int iconStyle, unsigned size)
+{
+  static const unsigned kSizes[] = { 16, 20, 24, 32, 40, 48, 64, 72, 96 };
+  static const UINT kIDs1[] = { IDB_TB16, IDB_TB20, IDB_TB24, IDB_TB32, IDB_TB40, IDB_TB48, IDB_TB64, IDB_TB72, IDB_TB96 };
+  static const UINT kIDs2[] = { IDB_TB2_16, IDB_TB2_20, IDB_TB2_24, IDB_TB2_32, IDB_TB2_40, IDB_TB2_48, IDB_TB2_64, IDB_TB2_72, IDB_TB2_96 };
+  unsigned i = 0;
+  for (unsigned k = 0; k < Z7_ARRAY_SIZE(kSizes); k++)
+    if (kSizes[k] == size)
+      i = k;
+  return (iconStyle == k_IconStyle_Modern2) ? kIDs2[i] : kIDs1[i];
+}
+
 static unsigned GetScreenDpi()
 {
   unsigned dpi = 96;
@@ -252,8 +265,9 @@ static unsigned CreateToolbar(HWND parent,
     NControl::CImageList & /* logoImageList */,
     NControl::CToolBar &toolBar,
     bool largeButtons,
-    bool classic)
+    int iconStyle)
 {
+  const bool classic = (iconStyle == k_IconStyle_Classic);
   toolBar.Attach(::CreateWindowEx(0, TOOLBARCLASSNAME, NULL, 0
       | WS_CHILD
       | WS_VISIBLE
@@ -296,7 +310,7 @@ static unsigned CreateToolbar(HWND parent,
 
   imageList.Create((int)h, (int)h, ILC_COLOR32, (int)kNumToolbarImages, 0);
   {
-    HBITMAP b = LoadAlphaBitmap(strip.ResID);
+    HBITMAP b = LoadAlphaBitmap(GetStripResID(iconStyle, h));
     if (b)
     {
       imageList.Add(b);
@@ -454,28 +468,44 @@ static bool ReadToolbarLayout(CRecordVector<int> &layout)
   return true;
 }
 
-static const wchar_t * const k_Reg_ToolbarClassic = L"ToolbarClassicIcons";
+static const wchar_t * const k_Reg_ToolbarClassic = L"ToolbarClassicIcons"; // old versions
+static const wchar_t * const k_Reg_ToolbarIconStyle = L"ToolbarIconStyle";
 
-bool ReadToolbarClassicIcons()
+static bool ReadRegDword(const wchar_t *name, DWORD &value)
 {
   HKEY key;
   if (::RegOpenKeyExW(HKEY_CURRENT_USER, k_Reg_FM, 0, KEY_READ, &key) != ERROR_SUCCESS)
     return false;
-  DWORD value = 0;
   DWORD type = 0;
   DWORD size = sizeof(value);
-  const LONG res = ::RegQueryValueExW(key, k_Reg_ToolbarClassic, NULL, &type, (LPBYTE)&value, &size);
+  const LONG res = ::RegQueryValueExW(key, name, NULL, &type, (LPBYTE)&value, &size);
   ::RegCloseKey(key);
-  return (res == ERROR_SUCCESS && type == REG_DWORD && value != 0);
+  return (res == ERROR_SUCCESS && type == REG_DWORD);
 }
 
-void SaveToolbarClassicIcons(bool classic)
+int ReadToolbarIconStyle()
+{
+  DWORD value = 0;
+  if (ReadRegDword(k_Reg_ToolbarIconStyle, value))
+  {
+    if (value <= (DWORD)k_IconStyle_Classic)
+      return (int)value;
+    return k_IconStyle_Modern1;
+  }
+  // old option "Classic Icons"
+  if (ReadRegDword(k_Reg_ToolbarClassic, value) && value != 0)
+    return k_IconStyle_Classic;
+  return k_IconStyle_Modern1;
+}
+
+void SaveToolbarIconStyle(int style)
 {
   HKEY key;
   if (::RegCreateKeyExW(HKEY_CURRENT_USER, k_Reg_FM, 0, NULL, 0, KEY_WRITE, NULL, &key, NULL) != ERROR_SUCCESS)
     return;
-  const DWORD value = classic ? 1 : 0;
-  ::RegSetValueExW(key, k_Reg_ToolbarClassic, 0, REG_DWORD, (const BYTE *)&value, sizeof(value));
+  const DWORD value = (DWORD)style;
+  ::RegSetValueExW(key, k_Reg_ToolbarIconStyle, 0, REG_DWORD, (const BYTE *)&value, sizeof(value));
+  ::RegDeleteValueW(key, k_Reg_ToolbarClassic);
   ::RegCloseKey(key);
 }
 
@@ -581,7 +611,7 @@ void CApp::ReloadToolbars()
   // there is only one toolbar now.
   if (ShowArchiveToolbar || ShowStandardToolbar)
   {
-    _toolbarIconSize = CreateToolbar(_window, _buttonsImageList, _logoImageList, _toolBar, LargeButtons, ClassicIcons);
+    _toolbarIconSize = CreateToolbar(_window, _buttonsImageList, _logoImageList, _toolBar, LargeButtons, IconStyle);
     if (_toolBar)
       ::SetWindowSubclass(_toolBar, ToolbarSubclassProc, 1, (DWORD_PTR)(HWND)_window);
     CRecordVector<int> layout;
@@ -671,6 +701,8 @@ void CApp::ShowToolbarContextMenu()
   const unsigned kCmd_Customize = 102;
   const unsigned kCmd_Reset = 103;
   const unsigned kCmd_Classic = 104;
+  const unsigned kCmd_Modern1 = 105;
+  const unsigned kCmd_Modern2 = 106;
 
   HMENU menu = ::CreatePopupMenu();
   if (!menu)
@@ -687,11 +719,23 @@ void CApp::ShowToolbarContextMenu()
       s = "Show Buttons Text";
     ::AppendMenuW(menu, MF_STRING | (ShowButtonsLables ? MF_CHECKED : MF_UNCHECKED), kCmd_Text, s);
   }
+  ::AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
   {
-    UString s = GetMainMenuText(_window, IDM_VIEW_TOOLBARS_CLASSIC);
-    if (s.IsEmpty())
-      s = "Classic Icons";
-    ::AppendMenuW(menu, MF_STRING | (ClassicIcons ? MF_CHECKED : MF_UNCHECKED), kCmd_Classic, s);
+    // icon style: Modern 1 / Modern 2 / Classic
+    const struct { unsigned Cmd; UINT MenuID; int Style; const char *Name; } kStyles[] =
+    {
+      { kCmd_Modern1, IDM_VIEW_TOOLBARS_MODERN1, k_IconStyle_Modern1, "Modern 1 Icons" },
+      { kCmd_Modern2, IDM_VIEW_TOOLBARS_MODERN2, k_IconStyle_Modern2, "Modern 2 Icons" },
+      { kCmd_Classic, IDM_VIEW_TOOLBARS_CLASSIC, k_IconStyle_Classic, "Classic Icons" }
+    };
+    for (unsigned k = 0; k < Z7_ARRAY_SIZE(kStyles); k++)
+    {
+      UString s = GetMainMenuText(_window, kStyles[k].MenuID);
+      if (s.IsEmpty())
+        s = kStyles[k].Name;
+      ::AppendMenuW(menu, MF_STRING | MFT_RADIOCHECK
+          | (IconStyle == kStyles[k].Style ? MF_CHECKED : MF_UNCHECKED), kStyles[k].Cmd, s);
+    }
   }
   ::AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
   {
@@ -721,6 +765,10 @@ void CApp::ShowToolbarContextMenu()
     ::PostMessage(_window, WM_COMMAND, IDM_VIEW_TOOLBARS_CUSTOMIZE, 0);
   else if (cmd == kCmd_Classic)
     ::PostMessage(_window, WM_COMMAND, IDM_VIEW_TOOLBARS_CLASSIC, 0);
+  else if (cmd == kCmd_Modern1)
+    ::PostMessage(_window, WM_COMMAND, IDM_VIEW_TOOLBARS_MODERN1, 0);
+  else if (cmd == kCmd_Modern2)
+    ::PostMessage(_window, WM_COMMAND, IDM_VIEW_TOOLBARS_MODERN2, 0);
   else if (cmd == kCmd_Reset)
   {
     CRecordVector<int> layout;
@@ -731,7 +779,7 @@ void CApp::ShowToolbarContextMenu()
 }
 
 // small icons for lists in "Customize Toolbar" window
-static HIMAGELIST CreateSmallToolbarImageList(bool classic)
+static HIMAGELIST CreateSmallToolbarImageList(int iconStyle)
 {
   int dpi = 96;
   const HDC dc = ::GetDC(NULL);
@@ -744,17 +792,16 @@ static HIMAGELIST CreateSmallToolbarImageList(bool classic)
     dpi = 96;
   unsigned size = 24;
   UINT resID = IDB_TBC_S; // classic small icons: 24x24
-  if (!classic)
+  if (iconStyle != k_IconStyle_Classic)
   {
     const unsigned want = (unsigned)(20 * dpi / 96);
     static const unsigned kSizes[] = { 16, 20, 24, 32, 40, 48 };
-    static const UINT kIDs[] = { IDB_TB16, IDB_TB20, IDB_TB24, IDB_TB32, IDB_TB40, IDB_TB48 };
     unsigned best = 0;
     for (unsigned k = 0; k < Z7_ARRAY_SIZE(kSizes); k++)
       if (kSizes[k] <= want)
         best = k;
     size = kSizes[best];
-    resID = kIDs[best];
+    resID = GetStripResID(iconStyle, size);
   }
   HIMAGELIST il = ImageList_Create((int)size, (int)size, ILC_COLOR32, (int)kNumToolbarImages, 0);
   if (!il)
@@ -785,7 +832,7 @@ void CApp::CustomizeToolbar()
   }
   GetCurrentToolbarLayout(dlg.Layout);
   GetDefaultToolbarLayout(dlg.DefaultLayout);
-  dlg.ImageList = CreateSmallToolbarImageList(ClassicIcons);
+  dlg.ImageList = CreateSmallToolbarImageList(IconStyle);
   const INT_PTR res = dlg.Create(_window);
   if (dlg.ImageList)
     ImageList_Destroy(dlg.ImageList);
@@ -1110,7 +1157,6 @@ void CApp::ShowToolbarOverflowMenu()
   {
     const int want = ::GetSystemMetrics(SM_CXSMICON);
     static const int kSizes[] = { 16, 20, 24, 32 };
-    static const UINT kIDs[] = { IDB_TB16, IDB_TB20, IDB_TB24, IDB_TB32 };
     unsigned best = 0;
     for (unsigned k = 1; k < Z7_ARRAY_SIZE(kSizes); k++)
     {
@@ -1120,7 +1166,8 @@ void CApp::ShowToolbarOverflowMenu()
         best = k;
     }
     // classic icons: small 24x24 classic strip
-    strip = LoadAlphaBitmap(ClassicIcons ? (UINT)IDB_TBC_S : kIDs[best]);
+    strip = LoadAlphaBitmap(IconStyle == k_IconStyle_Classic ?
+        (UINT)IDB_TBC_S : GetStripResID(IconStyle, (unsigned)kSizes[best]));
   }
 
   HBITMAP icons[32]; // same size as _hiddenToolbarCmds[]
