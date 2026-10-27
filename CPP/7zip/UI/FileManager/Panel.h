@@ -634,7 +634,7 @@ public:
   void SetExtendedStyle()
   {
     if (_listView)
-      _listView.SetExtendedListViewStyle(_exStyle);
+      _listView.SetExtendedListViewStyle(_exStyle | LVS_EX_DOUBLEBUFFER); // no flicker
   }
 
   void SetSortRawStatus();

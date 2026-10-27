@@ -461,6 +461,18 @@ static LRESULT CALLBACK SubclassProc(HWND hwnd, UINT message, WPARAM wParam, LPA
               return CDRF_DODEFAULT;
             }
           }
+          if (h && h->hwndFrom == ListView_GetHeader(hwnd)
+              && (h->code == HDN_ITEMCHANGEDW || h->code == HDN_ITEMCHANGEDA
+               || h->code == HDN_ENDTRACKW || h->code == HDN_ENDTRACKA))
+          {
+            // column width was changed: repaint whole list,
+            // else the empty area below items keeps old column lines
+            const LRESULT res = oldProc ?
+                ::CallWindowProcW(oldProc, hwnd, message, wParam, lParam) :
+                ::DefWindowProcW(hwnd, message, wParam, lParam);
+            ::InvalidateRect(hwnd, NULL, FALSE); // list is double buffered: no erase, no flicker
+            return res;
+          }
         }
         break;
       case WM_CTLCOLORDLG:
@@ -526,6 +538,7 @@ void ApplyToListView(HWND listView)
   Subclass(listView, k_Sub_ListHeader);
   const COLORREF bk = g_IsDark ? k_Dark_ListBk : ::GetSysColor(COLOR_WINDOW);
   const COLORREF text = g_IsDark ? k_Dark_Text : ::GetSysColor(COLOR_WINDOWTEXT);
+  ListView_SetExtendedListViewStyleEx(listView, LVS_EX_DOUBLEBUFFER, LVS_EX_DOUBLEBUFFER);
   ListView_SetBkColor(listView, bk);
   ListView_SetTextBkColor(listView, bk);
   ListView_SetTextColor(listView, text);
