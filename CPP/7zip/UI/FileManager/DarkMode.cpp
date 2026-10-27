@@ -21,13 +21,13 @@ namespace NDarkMode {
 
 // ---------- colors ----------
 
-static const COLORREF k_Dark_Bk      = RGB(32, 32, 32);
+static const COLORREF k_Dark_Bk      = RGB(48, 48, 48);
 static const COLORREF k_Dark_Text    = RGB(230, 230, 230);
-static const COLORREF k_Dark_ListBk  = RGB(25, 25, 25);
-static const COLORREF k_Dark_EditBk  = RGB(45, 45, 45);
-static const COLORREF k_Dark_Hot     = RGB(65, 65, 65);
-static const COLORREF k_Dark_Border  = RGB(70, 70, 70);
-static const COLORREF k_Dark_Select  = RGB(110, 50, 50);
+static const COLORREF k_Dark_ListBk  = RGB(40, 40, 40);
+static const COLORREF k_Dark_EditBk  = RGB(60, 60, 60);
+static const COLORREF k_Dark_Hot     = RGB(80, 80, 80);
+static const COLORREF k_Dark_Border  = RGB(90, 90, 90);
+static const COLORREF k_Dark_Select  = RGB(130, 60, 60);
 
 static EThemeMode g_Mode = k_Theme_Light;
 static bool g_IsDark = false;
