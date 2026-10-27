@@ -106,6 +106,9 @@
 #define IDM_VIEW_TOOLBARS_CUSTOMIZE 575
 #define IDM_VIEW_TOOLBARS_CLASSIC   576
 #define IDM_EASY_EXTRACT            577
+#define IDM_VIEW_ZOOM_IN            560
+#define IDM_VIEW_ZOOM_OUT           561
+#define IDM_VIEW_ZOOM_RESET         562
 
 #define IDM_VER_EDIT             580
 #define IDM_VER_COMMIT           581

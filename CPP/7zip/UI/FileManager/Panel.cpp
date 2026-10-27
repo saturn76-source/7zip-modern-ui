@@ -192,6 +192,14 @@ LRESULT CMyListView::OnMessage(UINT message, WPARAM wParam, LPARAM lParam)
     // return 0;
   }
   */
+  else if (message == WM_MOUSEWHEEL && (GET_KEYSTATE_WPARAM(wParam) & MK_CONTROL) != 0)
+  {
+    // Ctrl + mouse wheel: zoom file list
+    const int delta = GET_WHEEL_DELTA_WPARAM(wParam);
+    if (delta != 0)
+      ::SendMessageW(g_HWND, WM_COMMAND, delta > 0 ? IDM_VIEW_ZOOM_IN : IDM_VIEW_ZOOM_OUT, 0);
+    return 0;
+  }
   else if (message == WM_KEYDOWN)
   {
     bool alt = IsKeyDown(VK_MENU);
@@ -668,6 +676,178 @@ void CPanel::ApplyTheme()
     NDarkMode::ApplyToBkWindow(_headerReBar);
   if (_headerToolBar)
     NDarkMode::ApplyToBkWindow(_headerToolBar);
+}
+
+// ---------- file list zoom (View / Zoom In, Zoom Out; Ctrl + mouse wheel) ----------
+
+static const unsigned k_ZoomLevels[] = { 50, 67, 75, 80, 90, 100, 110, 125, 150, 175, 200, 250, 300, 400 };
+static const unsigned k_ZoomDefault = 100;
+static const wchar_t * const k_Reg_FM_Zoom = L"Software\\7-Zip\\FM";
+static const wchar_t * const k_Reg_ListZoom = L"ListZoom";
+
+static unsigned g_ListZoom = 0; // 0 : not loaded yet
+
+static unsigned ZoomLevelIndex(unsigned zoom)
+{
+  // index of nearest level (that is not bigger than zoom)
+  unsigned index = 0;
+  for (unsigned i = 0; i < Z7_ARRAY_SIZE(k_ZoomLevels); i++)
+    if (k_ZoomLevels[i] <= zoom)
+      index = i;
+  return index;
+}
+
+int GetListZoom()
+{
+  if (g_ListZoom == 0)
+  {
+    g_ListZoom = k_ZoomDefault;
+    HKEY key;
+    if (::RegOpenKeyExW(HKEY_CURRENT_USER, k_Reg_FM_Zoom, 0, KEY_READ, &key) == ERROR_SUCCESS)
+    {
+      DWORD value = 0;
+      DWORD type = 0;
+      DWORD size = sizeof(value);
+      if (::RegQueryValueExW(key, k_Reg_ListZoom, NULL, &type, (LPBYTE)&value, &size) == ERROR_SUCCESS
+          && type == REG_DWORD)
+        g_ListZoom = k_ZoomLevels[ZoomLevelIndex((unsigned)value)];
+      ::RegCloseKey(key);
+    }
+  }
+  return (int)g_ListZoom;
+}
+
+bool ChangeListZoom(int dir)
+{
+  const unsigned old = (unsigned)GetListZoom();
+  unsigned index = ZoomLevelIndex(old);
+  if (dir > 0)
+  {
+    if (index + 1 < Z7_ARRAY_SIZE(k_ZoomLevels))
+      index++;
+  }
+  else if (dir < 0)
+  {
+    if (index > 0)
+      index--;
+  }
+  else
+    index = ZoomLevelIndex(k_ZoomDefault);
+  g_ListZoom = k_ZoomLevels[index];
+  if (g_ListZoom == old)
+    return false;
+  HKEY key;
+  if (::RegCreateKeyExW(HKEY_CURRENT_USER, k_Reg_FM_Zoom, 0, NULL, 0, KEY_WRITE, NULL, &key, NULL) == ERROR_SUCCESS)
+  {
+    const DWORD value = g_ListZoom;
+    ::RegSetValueExW(key, k_Reg_ListZoom, 0, REG_DWORD, (const BYTE *)&value, sizeof(value));
+    ::RegCloseKey(key);
+  }
+  return true;
+}
+
+// shell image lists: SHIL_LARGE (32), SHIL_SMALL (16), SHIL_EXTRALARGE (48)
+static HIMAGELIST GetShellImageList(int shil)
+{
+  typedef HRESULT (WINAPI *Func_SHGetImageList)(int iImageList, REFIID riid, void **ppv);
+  static Func_SHGetImageList func = NULL;
+  static bool loaded = false;
+  if (!loaded)
+  {
+    loaded = true;
+    const HMODULE shell = ::GetModuleHandleW(L"shell32.dll");
+    if (shell)
+    {
+      func = Z7_GET_PROC_ADDRESS(Func_SHGetImageList, shell, "SHGetImageList");
+      if (!func) // old Windows: exported only by ordinal 727
+        func = Z7_GET_PROC_ADDRESS(Func_SHGetImageList, shell, (LPCSTR)(UINT_PTR)727);
+    }
+  }
+  if (!func)
+    return NULL;
+  // IID_IImageList {46EB5926-582E-4017-9FDF-E8998DAA0950}
+  static const GUID k_IID_IImageList =
+    { 0x46EB5926, 0x582E, 0x4017, { 0x9F, 0xDF, 0xE8, 0x99, 0x8D, 0xAA, 0x09, 0x50 } };
+  void *list = NULL;
+  if (func(shil, k_IID_IImageList, &list) != S_OK)
+    return NULL;
+  return (HIMAGELIST)list; // IImageList can be used as HIMAGELIST
+}
+
+// fonts for zoom levels (they are shared by both panels and they are not deleted)
+static HFONT g_ZoomFonts[Z7_ARRAY_SIZE(k_ZoomLevels)];
+
+// font of list view for 100%: original font of list view or Windows icon font
+static void GetListBaseFont(HFONT origFont, LOGFONTW &lf)
+{
+  memset(&lf, 0, sizeof(lf));
+  if (origFont && ::GetObjectW(origFont, sizeof(lf), &lf) == sizeof(lf))
+    return;
+  memset(&lf, 0, sizeof(lf));
+  if (!::SystemParametersInfoW(SPI_GETICONTITLELOGFONT, sizeof(lf), &lf, 0))
+    ::GetObjectW(::GetStockObject(DEFAULT_GUI_FONT), sizeof(lf), &lf);
+}
+
+void CPanel::ApplyListZoom()
+{
+  if (!_listView)
+    return;
+  const unsigned zoom = (unsigned)GetListZoom();
+
+  // font
+  // we copy the font description of list view at first call (before any zoom).
+  // We don't keep original HFONT: list view deletes its own font, when we set another font.
+  static bool s_BaseFontDefined = false;
+  static LOGFONTW s_BaseFont;
+  if (!s_BaseFontDefined)
+  {
+    s_BaseFontDefined = true;
+    GetListBaseFont((HFONT)_listView.SendMsg(WM_GETFONT, 0, 0), s_BaseFont);
+  }
+  HFONT font;
+  {
+    const unsigned index = ZoomLevelIndex(zoom);
+    if (!g_ZoomFonts[index])
+    {
+      LOGFONTW lf = s_BaseFont;
+      lf.lfHeight = ::MulDiv(lf.lfHeight, (int)k_ZoomLevels[index], 100);
+      g_ZoomFonts[index] = ::CreateFontIndirectW(&lf);
+    }
+    font = g_ZoomFonts[index];
+  }
+  _listView.SendMsg(WM_SETFONT, (WPARAM)font, FALSE);
+  {
+    // header of list view: same font
+    const HWND header = ListView_GetHeader(_listView);
+    if (header)
+      ::SendMessageW(header, WM_SETFONT, (WPARAM)font, TRUE);
+  }
+
+  // icons
+  HIMAGELIST smallList = NULL;
+  HIMAGELIST largeList = NULL;
+  if (zoom >= 250)
+  {
+    smallList = GetShellImageList(2); // SHIL_EXTRALARGE: 48
+    largeList = GetShellImageList(2);
+  }
+  else if (zoom >= 150)
+  {
+    smallList = GetShellImageList(0); // SHIL_LARGE: 32
+    largeList = GetShellImageList(2); // SHIL_EXTRALARGE: 48
+  }
+  if (!smallList)
+    smallList = Shell_Get_SysImageList_smallIcons(true);
+  if (!largeList)
+    largeList = Shell_Get_SysImageList_smallIcons(false);
+  _listView.SetImageList(smallList, LVSIL_SMALL);
+  _listView.SetImageList(largeList, LVSIL_NORMAL);
+
+  // new row height / item size
+  const LONG_PTR style = _listView.GetStyle();
+  if ((style & LVS_TYPEMASK) == LVS_ICON)
+    _listView.SendMsg(LVM_ARRANGE, LVA_DEFAULT, 0);
+  _listView.InvalidateRect(NULL, true);
 }
 
 void CPanel::OnDestroy()

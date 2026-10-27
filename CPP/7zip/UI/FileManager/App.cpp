@@ -151,6 +151,7 @@ HRESULT CApp::CreateOnePanel(unsigned panelIndex, const UString &mainPath, const
       needOpenArc,
       openRes);
   Panels[panelIndex].ApplyTheme();
+  Panels[panelIndex].ApplyListZoom();
   return res;
 }
 

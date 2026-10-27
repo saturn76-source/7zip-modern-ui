@@ -350,6 +350,15 @@ public:
   }
   void ApplyTheme();
   void SetThemeMode(int mode);
+  // file list zoom: dir > 0 - zoom in, dir < 0 - zoom out, 0 - 100%
+  void ZoomList(int dir)
+  {
+    if (!ChangeListZoom(dir))
+      return;
+    for (unsigned i = 0; i < kNumPanelsMax; i++)
+      if (Panels[i].PanelCreated)
+        Panels[i].ApplyListZoom();
+  }
   void ExtractArchives() { GetFocusedPanel().ExtractArchives(); }
   void TestArchives() { GetFocusedPanel().TestArchives(); }
 

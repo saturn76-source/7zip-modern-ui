@@ -213,6 +213,10 @@ UString GetFolderPath(IFolderFolder *folder);
 
 class CPanel;
 
+// file list zoom (percent), saved in registry
+int GetListZoom();
+bool ChangeListZoom(int dir); // returns true, if zoom was changed
+
 class CMyListView Z7_final: public NWindows::NControl::CListView2
 {
   // ~CMyListView() ZIP7_eq_delete;
@@ -434,6 +438,7 @@ public:
   void FindFiles();
   void EasyExtract();
   void ApplyTheme();
+  void ApplyListZoom(); // font and icon size of file list (View / Zoom)
   NWindows::NControl::
     #ifdef UNDER_CE
     CComboBox

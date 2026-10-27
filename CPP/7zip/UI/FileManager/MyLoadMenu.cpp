@@ -922,6 +922,9 @@ bool OnMenuCommand(HWND hWnd, unsigned id)
     case IDM_VIEW_TOOLBARS_LARGE_BUTTONS:     g_App.SwitchLargeButtons(); break;
     case IDM_VIEW_TOOLBARS_CUSTOMIZE:         g_App.CustomizeToolbar(); break;
     case IDM_VIEW_TOOLBARS_CLASSIC:           g_App.SwitchClassicIcons(); break;
+    case IDM_VIEW_ZOOM_IN:    g_App.ZoomList(1); break;
+    case IDM_VIEW_ZOOM_OUT:   g_App.ZoomList(-1); break;
+    case IDM_VIEW_ZOOM_RESET: g_App.ZoomList(0); break;
 
     case IDM_VIEW_TIME_UTC:
       g_Timestamp_Show_UTC = !g_Timestamp_Show_UTC;
