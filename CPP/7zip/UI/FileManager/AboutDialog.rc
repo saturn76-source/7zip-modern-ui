@@ -2,8 +2,8 @@
 #include "../../GuiCommon.rc"
 #include "../../MyVersion.h"
 
-#define xc 144
-#define yc 144
+#define xc 160
+#define yc 158
 
 #define y 93
 
@@ -22,5 +22,7 @@ CAPTION "About 7-Zip"
   LTEXT  "", IDT_ABOUT_VERSION, m, 54, xc, 8
   LTEXT  "", IDT_ABOUT_DATE, m, 67, xc, 8
   LTEXT  MY_COPYRIGHT, -1, m, 80, xc, 8
-  LTEXT  "7-Zip is free software", IDT_ABOUT_INFO, m, y, xc, (by - y - 1)
+  LTEXT  "7-Zip is free software", IDT_ABOUT_INFO, m, y, xc, 8
+  LTEXT  "7-Zip Modern UI edition v1.0", -1, m, y + 26, xc, 8
+  LTEXT  "Modifications copyright (c) 2026 saturn76-source", -1, m, y + 39, xc, 8
 }
