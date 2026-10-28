@@ -351,11 +351,8 @@ public:
   void FindFiles() { GetFocusedPanel().FindFiles(); }
   void EasyExtract()
   {
-    CPanel &panel = GetFocusedPanel();
-    if (!panel._parentFolders.IsEmpty())
-      OnCopy(false, false, GetFocusedPanelIndex(), true); // we are inside archive
-    else
-      panel.EasyExtract();
+    // in folder: selected archives; inside archive: whole archive
+    GetFocusedPanel().EasyExtract();
   }
   void ApplyTheme();
   void SetThemeMode(int mode);

@@ -437,6 +437,7 @@ public:
   void SetBigUpButtonImage();
   void FindFiles();
   void EasyExtract();
+  void EasyExtractFiles(const UStringVector &paths); // full paths of archives
   void ApplyTheme();
   void ApplyListZoom(); // font and icon size of file list (View / Zoom)
   NWindows::NControl::

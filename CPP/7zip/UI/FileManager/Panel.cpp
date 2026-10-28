@@ -1243,8 +1243,23 @@ void CPanel::EasyExtract()
 {
   if (!IsFSFolder())
   {
-    // inside archive: normal extract
-    ExtractArchives();
+    // inside archive: Easy Extract always extracts the whole archive
+    // (all files, also if some files are selected)
+    if (!_parentFolders.IsEmpty())
+    {
+      const UString &arcPath = _parentFolders[0].VirtualPath;
+      const DWORD attrib = ::GetFileAttributesW(arcPath);
+      if (attrib != INVALID_FILE_ATTRIBUTES && (attrib & FILE_ATTRIBUTE_DIRECTORY) == 0)
+      {
+        UStringVector paths;
+        paths.Add(arcPath);
+        EasyExtractFiles(paths);
+        return;
+      }
+    }
+    // archive inside other archive: extract all items of current folder
+    SelectAll(true);
+    g_App.OnCopy(false, false, g_App.GetFocusedPanelIndex(), true);
     return;
   }
   CRecordVector<UInt32> indices;
@@ -1256,11 +1271,26 @@ void CPanel::EasyExtract()
   }
   UStringVector paths;
   GetFilePaths(indices, paths);
+  EasyExtractFiles(paths);
+}
 
-  const UString fsPath = GetFsPath();
+static UString GetFileNameOfPath(const UString &path)
+{
+  return UString(path.Ptr((unsigned)(path.ReverseFind_PathSepar() + 1)));
+}
+
+// "Easy Extract" for archive files (full paths): dialog, extract, open folders
+void CPanel::EasyExtractFiles(const UStringVector &paths)
+{
+  if (paths.IsEmpty())
+    return;
+  // folder of archives
+  UString fsPath = paths[0];
+  fsPath.DeleteFrom((unsigned)(fsPath.ReverseFind_PathSepar() + 1));
+
   UString outFolder = fsPath;
-  if (indices.Size() == 1)
-    outFolder += GetSubFolderNameForExtract2(GetItemRelPath(indices[0]));
+  if (paths.Size() == 1)
+    outFolder += GetSubFolderNameForExtract(GetFileNameOfPath(paths[0]));
   else
     outFolder.Add_Char('*'); // 7-Zip replaces '*' with name of each archive
   outFolder.Add_PathSepar();
@@ -1270,7 +1300,20 @@ void CPanel::EasyExtract()
   {
     CCopyDialog dialog;
     dialog.Value = outFolder;
-    dialog.Info = GetItemsInfoString(indices);
+    {
+      // list of archives
+      const unsigned kMaxLines = 8;
+      FOR_VECTOR (i, paths)
+      {
+        if (i == kMaxLines)
+        {
+          dialog.Info += "...";
+          break;
+        }
+        dialog.Info += GetFileNameOfPath(paths[i]);
+        dialog.Info.Add_LF();
+      }
+    }
     if (outFolder.Find(L'*') >= 0)
     {
       // explanation of '*' in "Extract to" path
@@ -1295,7 +1338,7 @@ void CPanel::EasyExtract()
       return;
     if (!IS_PATH_SEPAR(outFolder.Back()))
       outFolder.Add_PathSepar();
-    // relative path: from current folder
+    // relative path: from folder of archives
     if (!NWindows::NFile::NName::IsAbsolutePath(outFolder))
       outFolder.Insert(0, fsPath);
   }
@@ -1304,13 +1347,13 @@ void CPanel::EasyExtract()
   UStringVector openFolders;
   {
     const int star = outFolder.Find(L'*');
-    FOR_VECTOR (i, indices)
+    FOR_VECTOR (i, paths)
     {
       UString folder = outFolder;
       if (star >= 0)
       {
         folder.Delete((unsigned)star);
-        folder.Insert((unsigned)star, GetSubFolderNameForExtract2(GetItemRelPath(indices[i])));
+        folder.Insert((unsigned)star, GetSubFolderNameForExtract(GetFileNameOfPath(paths[i])));
       }
       bool found = false;
       FOR_VECTOR (k, openFolders)
@@ -1332,14 +1375,12 @@ void CPanel::EasyExtract()
       , ci.WriteZone
       );
 
-  if (!openAfter)
-  {
+  if (IsFSFolder())
     RefreshListCtrl();
+  if (!openAfter)
     return;
-  }
 
   // open all extracted files folders in Windows File Explorer
-  RefreshListCtrl();
   FOR_VECTOR (i, openFolders)
   {
     UString checkPath = openFolders[i];
