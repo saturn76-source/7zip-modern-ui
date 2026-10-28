@@ -28,14 +28,11 @@
 // WinRAR-style toolbar image strips (32-bit with alpha), one per icon height
 #define IDB_TB24     170
 #define IDB_TB32     171
-#define IDB_TB40     172
 #define IDB_TB48     173
 #define IDB_TB64     174
-#define IDB_TB72     175
 #define IDB_TB96     176
 // small images for ">>" (chevron) menu
 #define IDB_TB16     177
-#define IDB_TB20     178
 // classic 7-Zip icons: large 48x36, small 24x24
 #define IDB_TBC_L    179
 #define IDB_TBC_S    187
@@ -52,32 +49,19 @@
 #define IDB_UP64     308
 // "Modern 2" toolbar icons (flat color tiles)
 #define IDB_TB2_16   320
-#define IDB_TB2_20   321
 #define IDB_TB2_24   322
 #define IDB_TB2_32   323
-#define IDB_TB2_40   324
 #define IDB_TB2_48   325
 #define IDB_TB2_64   326
-#define IDB_TB2_72   327
 #define IDB_TB2_96   328
 // "Modern 3" toolbar icons (Windows 11 style)
 #define IDB_TB3_16   330
-#define IDB_TB3_20   331
 #define IDB_TB3_24   332
 #define IDB_TB3_32   333
-#define IDB_TB3_40   334
 #define IDB_TB3_48   335
 #define IDB_TB3_64   336
-#define IDB_TB3_72   337
 #define IDB_TB3_96   338
 
-#define IDB_LOGO24   180
-#define IDB_LOGO32   181
-#define IDB_LOGO40   182
-#define IDB_LOGO48   183
-#define IDB_LOGO64   184
-#define IDB_LOGO72   185
-#define IDB_LOGO96   186
 
 #define IDM_HASH_ALL             101
 #define IDM_CRC32                102

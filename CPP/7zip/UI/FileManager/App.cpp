@@ -190,19 +190,18 @@ static const unsigned kNumToolbarImages = 11;
 struct CToolbarStripInfo
 {
   unsigned Height;
-  UINT ResID;
-  UINT LogoResID;
 };
 
+// toolbar icon sizes. Sizes 40 and 72 are made from bigger stored icons (see LoadStripBitmap())
 static const CToolbarStripInfo g_ToolbarStrips[] =
 {
-  { 24, IDB_TB24, IDB_LOGO24 },
-  { 32, IDB_TB32, IDB_LOGO32 },
-  { 40, IDB_TB40, IDB_LOGO40 },
-  { 48, IDB_TB48, IDB_LOGO48 },
-  { 64, IDB_TB64, IDB_LOGO64 },
-  { 72, IDB_TB72, IDB_LOGO72 },
-  { 96, IDB_TB96, IDB_LOGO96 }
+  { 24 },
+  { 32 },
+  { 40 },
+  { 48 },
+  { 64 },
+  { 72 },
+  { 96 }
 };
 
 static HBITMAP LoadAlphaBitmap(UINT resID)
@@ -213,22 +212,113 @@ static HBITMAP LoadAlphaBitmap(UINT resID)
       IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION);
 }
 
-// bitmap of toolbar icons for "Modern 1" / "Modern 2" style and icon size
-static UINT GetStripResID(int iconStyle, unsigned size)
+// stored sizes of toolbar icons ("Modern 1", "Modern 2", "Modern 3").
+// Other sizes (20, 40, 72) are made by scaling down the next bigger stored size:
+// it keeps the exe file smaller.
+static const unsigned k_StripSizes[] = { 16, 24, 32, 48, 64, 96 };
+
+static UINT GetStripResID(int iconStyle, unsigned index)
 {
-  static const unsigned kSizes[] = { 16, 20, 24, 32, 40, 48, 64, 72, 96 };
-  static const UINT kIDs1[] = { IDB_TB16, IDB_TB20, IDB_TB24, IDB_TB32, IDB_TB40, IDB_TB48, IDB_TB64, IDB_TB72, IDB_TB96 };
-  static const UINT kIDs2[] = { IDB_TB2_16, IDB_TB2_20, IDB_TB2_24, IDB_TB2_32, IDB_TB2_40, IDB_TB2_48, IDB_TB2_64, IDB_TB2_72, IDB_TB2_96 };
-  static const UINT kIDs3[] = { IDB_TB3_16, IDB_TB3_20, IDB_TB3_24, IDB_TB3_32, IDB_TB3_40, IDB_TB3_48, IDB_TB3_64, IDB_TB3_72, IDB_TB3_96 };
-  unsigned i = 0;
-  for (unsigned k = 0; k < Z7_ARRAY_SIZE(kSizes); k++)
-    if (kSizes[k] == size)
-      i = k;
+  static const UINT kIDs1[] = { IDB_TB16, IDB_TB24, IDB_TB32, IDB_TB48, IDB_TB64, IDB_TB96 };
+  static const UINT kIDs2[] = { IDB_TB2_16, IDB_TB2_24, IDB_TB2_32, IDB_TB2_48, IDB_TB2_64, IDB_TB2_96 };
+  static const UINT kIDs3[] = { IDB_TB3_16, IDB_TB3_24, IDB_TB3_32, IDB_TB3_48, IDB_TB3_64, IDB_TB3_96 };
   if (iconStyle == k_IconStyle_Modern2)
-    return kIDs2[i];
+    return kIDs2[index];
   if (iconStyle == k_IconStyle_Modern3)
-    return kIDs3[i];
-  return kIDs1[i];
+    return kIDs3[index];
+  return kIDs1[index];
+}
+
+// scales strip of square icons (32-bit, alpha) from (srcSize) to (dstSize) icons.
+// Each destination pixel is average of 4x4 samples (with alpha weighting).
+static HBITMAP ScaleStripBitmap(HBITMAP src, unsigned srcSize, unsigned dstSize)
+{
+  BITMAP bm;
+  if (::GetObject(src, sizeof(bm), &bm) == 0 || bm.bmWidth <= 0 || bm.bmHeight == 0)
+    return NULL;
+  const unsigned sw = (unsigned)bm.bmWidth;
+  const unsigned sh = (unsigned)(bm.bmHeight < 0 ? -bm.bmHeight : bm.bmHeight);
+  if (sh != srcSize || srcSize == 0 || dstSize == 0)
+    return NULL;
+  const unsigned numImages = sw / srcSize;
+  const unsigned dw = numImages * dstSize;
+  const unsigned dh = dstSize;
+
+  BITMAPINFO bi;
+  memset(&bi, 0, sizeof(bi));
+  bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+  bi.bmiHeader.biWidth = (LONG)sw;
+  bi.bmiHeader.biHeight = -(LONG)sh; // top-down
+  bi.bmiHeader.biPlanes = 1;
+  bi.bmiHeader.biBitCount = 32;
+  bi.bmiHeader.biCompression = BI_RGB;
+
+  UInt32 *srcBits = new UInt32[(size_t)sw * sh];
+  HBITMAP dst = NULL;
+  const HDC dc = ::GetDC(NULL);
+  if (dc && ::GetDIBits(dc, src, 0, sh, srcBits, &bi, DIB_RGB_COLORS) == (int)sh)
+  {
+    bi.bmiHeader.biWidth = (LONG)dw;
+    bi.bmiHeader.biHeight = -(LONG)dh;
+    void *p = NULL;
+    dst = ::CreateDIBSection(dc, &bi, DIB_RGB_COLORS, &p, NULL, 0);
+    if (dst && p)
+    {
+      UInt32 *dstBits = (UInt32 *)p;
+      const unsigned kSub = 4;
+      for (unsigned img = 0; img < numImages; img++)
+      for (unsigned y = 0; y < dh; y++)
+      for (unsigned x = 0; x < dstSize; x++)
+      {
+        double sa = 0, sr = 0, sg = 0, sb = 0;
+        for (unsigned j = 0; j < kSub; j++)
+        for (unsigned i = 0; i < kSub; i++)
+        {
+          unsigned sx = (unsigned)(((double)x + ((double)i + 0.5) / kSub) * srcSize / dstSize);
+          unsigned sy = (unsigned)(((double)y + ((double)j + 0.5) / kSub) * srcSize / dstSize);
+          if (sx >= srcSize) sx = srcSize - 1;
+          if (sy >= srcSize) sy = srcSize - 1;
+          const UInt32 v = srcBits[(size_t)sy * sw + img * srcSize + sx];
+          const double a = (double)(v >> 24);
+          sa += a;
+          sr += a * (double)((v >> 16) & 0xFF);
+          sg += a * (double)((v >> 8) & 0xFF);
+          sb += a * (double)(v & 0xFF);
+        }
+        UInt32 out = 0;
+        if (sa > 0)
+        {
+          const unsigned a = (unsigned)(sa / (kSub * kSub) + 0.5);
+          const unsigned r = (unsigned)(sr / sa + 0.5);
+          const unsigned g = (unsigned)(sg / sa + 0.5);
+          const unsigned b = (unsigned)(sb / sa + 0.5);
+          out = ((UInt32)a << 24) | ((UInt32)r << 16) | ((UInt32)g << 8) | (UInt32)b;
+        }
+        dstBits[(size_t)y * dw + img * dstSize + x] = out;
+      }
+    }
+  }
+  if (dc)
+    ::ReleaseDC(NULL, dc);
+  delete []srcBits;
+  return dst;
+}
+
+// strip of toolbar icons ("Modern" styles) for any icon size
+static HBITMAP LoadStripBitmap(int iconStyle, unsigned size)
+{
+  // stored size that is equal or bigger
+  unsigned k = 0;
+  while (k + 1 < Z7_ARRAY_SIZE(k_StripSizes) && k_StripSizes[k] < size)
+    k++;
+  HBITMAP b = LoadAlphaBitmap(GetStripResID(iconStyle, k));
+  if (!b || k_StripSizes[k] == size)
+    return b;
+  HBITMAP scaled = ScaleStripBitmap(b, k_StripSizes[k], size);
+  if (!scaled)
+    return b;
+  ::DeleteObject(b);
+  return scaled;
 }
 
 static unsigned GetScreenDpi()
@@ -315,7 +405,7 @@ static unsigned CreateToolbar(HWND parent,
 
   imageList.Create((int)h, (int)h, ILC_COLOR32, (int)kNumToolbarImages, 0);
   {
-    HBITMAP b = LoadAlphaBitmap(GetStripResID(iconStyle, h));
+    HBITMAP b = LoadStripBitmap(iconStyle, h);
     if (b)
     {
       imageList.Add(b);
@@ -799,8 +889,7 @@ static HIMAGELIST CreateSmallToolbarImageList(int iconStyle)
   }
   if (dpi <= 0)
     dpi = 96;
-  unsigned size = 24;
-  UINT resID = IDB_TBC_S; // classic small icons: 24x24
+  unsigned size = 24; // classic small icons: 24x24
   if (iconStyle != k_IconStyle_Classic)
   {
     const unsigned want = (unsigned)(20 * dpi / 96);
@@ -810,12 +899,12 @@ static HIMAGELIST CreateSmallToolbarImageList(int iconStyle)
       if (kSizes[k] <= want)
         best = k;
     size = kSizes[best];
-    resID = GetStripResID(iconStyle, size);
   }
   HIMAGELIST il = ImageList_Create((int)size, (int)size, ILC_COLOR32, (int)kNumToolbarImages, 0);
   if (!il)
     return NULL;
-  HBITMAP b = LoadAlphaBitmap(resID);
+  HBITMAP b = (iconStyle == k_IconStyle_Classic) ?
+      LoadAlphaBitmap(IDB_TBC_S) : LoadStripBitmap(iconStyle, size);
   if (b)
   {
     ImageList_Add(il, b, NULL);
@@ -1175,8 +1264,8 @@ void CApp::ShowToolbarOverflowMenu()
         best = k;
     }
     // classic icons: small 24x24 classic strip
-    strip = LoadAlphaBitmap(IconStyle == k_IconStyle_Classic ?
-        (UINT)IDB_TBC_S : GetStripResID(IconStyle, (unsigned)kSizes[best]));
+    strip = (IconStyle == k_IconStyle_Classic) ?
+        LoadAlphaBitmap(IDB_TBC_S) : LoadStripBitmap(IconStyle, (unsigned)kSizes[best]);
   }
 
   HBITMAP icons[32]; // same size as _hiddenToolbarCmds[]
