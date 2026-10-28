@@ -219,11 +219,16 @@ static UINT GetStripResID(int iconStyle, unsigned size)
   static const unsigned kSizes[] = { 16, 20, 24, 32, 40, 48, 64, 72, 96 };
   static const UINT kIDs1[] = { IDB_TB16, IDB_TB20, IDB_TB24, IDB_TB32, IDB_TB40, IDB_TB48, IDB_TB64, IDB_TB72, IDB_TB96 };
   static const UINT kIDs2[] = { IDB_TB2_16, IDB_TB2_20, IDB_TB2_24, IDB_TB2_32, IDB_TB2_40, IDB_TB2_48, IDB_TB2_64, IDB_TB2_72, IDB_TB2_96 };
+  static const UINT kIDs3[] = { IDB_TB3_16, IDB_TB3_20, IDB_TB3_24, IDB_TB3_32, IDB_TB3_40, IDB_TB3_48, IDB_TB3_64, IDB_TB3_72, IDB_TB3_96 };
   unsigned i = 0;
   for (unsigned k = 0; k < Z7_ARRAY_SIZE(kSizes); k++)
     if (kSizes[k] == size)
       i = k;
-  return (iconStyle == k_IconStyle_Modern2) ? kIDs2[i] : kIDs1[i];
+  if (iconStyle == k_IconStyle_Modern2)
+    return kIDs2[i];
+  if (iconStyle == k_IconStyle_Modern3)
+    return kIDs3[i];
+  return kIDs1[i];
 }
 
 static unsigned GetScreenDpi()
@@ -488,7 +493,7 @@ int ReadToolbarIconStyle()
   DWORD value = 0;
   if (ReadRegDword(k_Reg_ToolbarIconStyle, value))
   {
-    if (value <= (DWORD)k_IconStyle_Classic)
+    if (value <= (DWORD)k_IconStyle_Modern3)
       return (int)value;
     return k_IconStyle_Modern1;
   }
@@ -703,6 +708,7 @@ void CApp::ShowToolbarContextMenu()
   const unsigned kCmd_Classic = 104;
   const unsigned kCmd_Modern1 = 105;
   const unsigned kCmd_Modern2 = 106;
+  const unsigned kCmd_Modern3 = 107;
 
   HMENU menu = ::CreatePopupMenu();
   if (!menu)
@@ -726,6 +732,7 @@ void CApp::ShowToolbarContextMenu()
     {
       { kCmd_Modern1, IDM_VIEW_TOOLBARS_MODERN1, k_IconStyle_Modern1, "Modern 1 Icons" },
       { kCmd_Modern2, IDM_VIEW_TOOLBARS_MODERN2, k_IconStyle_Modern2, "Modern 2 Icons" },
+      { kCmd_Modern3, IDM_VIEW_TOOLBARS_MODERN3, k_IconStyle_Modern3, "Modern 3 Icons" },
       { kCmd_Classic, IDM_VIEW_TOOLBARS_CLASSIC, k_IconStyle_Classic, "Classic Icons" }
     };
     for (unsigned k = 0; k < Z7_ARRAY_SIZE(kStyles); k++)
@@ -769,6 +776,8 @@ void CApp::ShowToolbarContextMenu()
     ::PostMessage(_window, WM_COMMAND, IDM_VIEW_TOOLBARS_MODERN1, 0);
   else if (cmd == kCmd_Modern2)
     ::PostMessage(_window, WM_COMMAND, IDM_VIEW_TOOLBARS_MODERN2, 0);
+  else if (cmd == kCmd_Modern3)
+    ::PostMessage(_window, WM_COMMAND, IDM_VIEW_TOOLBARS_MODERN3, 0);
   else if (cmd == kCmd_Reset)
   {
     CRecordVector<int> layout;

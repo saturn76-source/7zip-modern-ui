@@ -23,7 +23,8 @@ enum
 {
   k_IconStyle_Modern1 = 0, // 3D icons (WinRAR like)
   k_IconStyle_Modern2 = 1, // flat color tiles
-  k_IconStyle_Classic = 2  // original 7-Zip icons
+  k_IconStyle_Classic = 2, // original 7-Zip icons
+  k_IconStyle_Modern3 = 3  // Windows 11 style
 };
 int ReadToolbarIconStyle();
 void SaveToolbarIconStyle(int style);

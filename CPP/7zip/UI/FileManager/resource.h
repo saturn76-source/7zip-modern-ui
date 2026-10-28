@@ -60,6 +60,16 @@
 #define IDB_TB2_64   326
 #define IDB_TB2_72   327
 #define IDB_TB2_96   328
+// "Modern 3" toolbar icons (Windows 11 style)
+#define IDB_TB3_16   330
+#define IDB_TB3_20   331
+#define IDB_TB3_24   332
+#define IDB_TB3_32   333
+#define IDB_TB3_40   334
+#define IDB_TB3_48   335
+#define IDB_TB3_64   336
+#define IDB_TB3_72   337
+#define IDB_TB3_96   338
 
 #define IDB_LOGO24   180
 #define IDB_LOGO32   181
@@ -121,6 +131,7 @@
 #define IDM_VIEW_ZOOM_RESET         562
 #define IDM_VIEW_TOOLBARS_MODERN1   563
 #define IDM_VIEW_TOOLBARS_MODERN2   564
+#define IDM_VIEW_TOOLBARS_MODERN3   565
 
 #define IDM_VER_EDIT             580
 #define IDM_VER_COMMIT           581
