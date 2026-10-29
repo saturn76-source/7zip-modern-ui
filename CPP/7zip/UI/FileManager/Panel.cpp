@@ -47,6 +47,76 @@ static const UINT kTimerElapse = 1000;
 
 static DWORD kStyles[4] = { LVS_ICON, LVS_SMALLICON, LVS_LIST, LVS_REPORT };
 
+// two small buttons at the right end of status bar (like in Windows Explorer):
+// "Details" and "Large Icons" view
+static const int kViewBtnID_Details = 0x6F01;
+static const int kViewBtnID_Icons   = 0x6F02;
+static const UInt32 kViewMode_Icons   = 0; // index in kStyles[]
+static const UInt32 kViewMode_Details = 3;
+
+static void DrawViewButton(const DRAWITEMSTRUCT *dis, bool isDetails, bool checked)
+{
+  const HDC dc = dis->hDC;
+  const RECT rc = dis->rcItem;
+  const bool dark = NDarkMode::IsDark();
+  {
+    const HBRUSH br = ::CreateSolidBrush(dark ? NDarkMode::Color_Bk() : ::GetSysColor(COLOR_BTNFACE));
+    ::FillRect(dc, &rc, br);
+    ::DeleteObject(br);
+  }
+  const bool pressed = (dis->itemState & ODS_SELECTED) != 0;
+  if (checked || pressed)
+  {
+    const COLORREF fill = dark ? RGB(85, 85, 85) : RGB(204, 228, 247);
+    const COLORREF line = dark ? RGB(120, 120, 120) : RGB(153, 209, 255);
+    const HBRUSH br = ::CreateSolidBrush(fill);
+    const HPEN pen = ::CreatePen(PS_SOLID, 1, line);
+    const HGDIOBJ oldBr = ::SelectObject(dc, br);
+    const HGDIOBJ oldPen = ::SelectObject(dc, pen);
+    ::RoundRect(dc, rc.left + 1, rc.top + 1, rc.right - 1, rc.bottom - 1, 6, 6);
+    ::SelectObject(dc, oldBr);
+    ::SelectObject(dc, oldPen);
+    ::DeleteObject(br);
+    ::DeleteObject(pen);
+  }
+  // icon
+  const int w = rc.right - rc.left;
+  const int h = rc.bottom - rc.top;
+  int s = (w < h ? w : h) * 6 / 10; // icon size
+  if (s < 8)
+    s = 8;
+  const int x0 = rc.left + (w - s) / 2;
+  const int y0 = rc.top + (h - s) / 2;
+  const HBRUSH br = ::CreateSolidBrush(dark ? RGB(225, 225, 225) : RGB(60, 60, 60));
+  if (isDetails)
+  {
+    // 3 rows: small square + line
+    const int rowH = s / 5 > 1 ? s / 5 : 2;
+    for (int i = 0; i < 3; i++)
+    {
+      const int y = y0 + i * (s - rowH) / 2;
+      RECT r1 = { x0, y, x0 + rowH, y + rowH };
+      RECT r2 = { x0 + rowH * 2, y, x0 + s, y + rowH };
+      ::FillRect(dc, &r1, br);
+      ::FillRect(dc, &r2, br);
+    }
+  }
+  else
+  {
+    // 2 x 2 tiles
+    const int gap = s / 6 > 1 ? s / 6 : 2;
+    const int t = (s - gap) / 2;
+    for (int i = 0; i < 4; i++)
+    {
+      const int x = x0 + (i % 2) * (t + gap);
+      const int y = y0 + (i / 2) * (t + gap);
+      RECT r = { x, y, x + t, y + t };
+      ::FillRect(dc, &r, br);
+    }
+  }
+  ::DeleteObject(br);
+}
+
 // static const int kCreateFolderID = 101;
 
 extern HINSTANCE g_hInstance;
@@ -151,6 +221,18 @@ LRESULT CPanel::OnMessage(UINT message, WPARAM wParam, LPARAM lParam)
       if (OnContextMenu(HANDLE(wParam), GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)))
         return 0;
       break;
+    case WM_DRAWITEM:
+    {
+      const DRAWITEMSTRUCT *dis = (const DRAWITEMSTRUCT *)lParam;
+      if (dis && (dis->CtlID == (UINT)kViewBtnID_Details || dis->CtlID == (UINT)kViewBtnID_Icons))
+      {
+        const bool isDetails = (dis->CtlID == (UINT)kViewBtnID_Details);
+        const UInt32 mode = GetListViewMode();
+        DrawViewButton(dis, isDetails, isDetails ? (mode == kViewMode_Details) : (mode == kViewMode_Icons));
+        return TRUE;
+      }
+      break;
+    }
     /*
     case WM_DROPFILES:
       CompressDropFiles(HDROP(wParam));
@@ -592,6 +674,21 @@ bool CPanel::OnCreate(CREATESTRUCT * /* createStruct */)
 
   const int sizes[] = {220, 320, 420, -1};
   _statusBar.SetParts(4, sizes);
+  _statusBar.SetStyle(_statusBar.GetStyle() | WS_CLIPSIBLINGS);
+
+  // "Details" / "Large Icons" buttons (over the right end of status bar)
+  {
+    const HWND b1 = ::CreateWindowExW(0, L"BUTTON", L"Details",
+        WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
+        0, 0, 1, 1, *this, (HMENU)(UINT_PTR)kViewBtnID_Details, g_hInstance, NULL);
+    const HWND b2 = ::CreateWindowExW(0, L"BUTTON", L"Large Icons",
+        WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
+        0, 0, 1, 1, *this, (HMENU)(UINT_PTR)kViewBtnID_Icons, g_hInstance, NULL);
+    if (b1)
+      ::SetWindowPos(b1, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    if (b2)
+      ::SetWindowPos(b2, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+  }
   // _statusBar2.SetParts(5, sizes);
 
   /*
@@ -890,6 +987,32 @@ void CPanel::ChangeWindowSize(int xSize, int ySize)
   }
   _listView.Move(0, kHeaderSize, xSize, yListViewSize);
   _statusBar.Move(0, kHeaderSize + yListViewSize, xSize, kStatusBarSize);
+  {
+    // "Details" / "Large Icons" buttons at the right end of status bar
+    const int bh = kStatusBarSize > 6 ? kStatusBarSize - 2 : kStatusBarSize;
+    const int bw = bh + bh / 4;
+    const int gripW = 4; // small space at right side
+    const int x2 = xSize - gripW - bw;
+    const int x1 = x2 - bw - 2;
+    const int y = kHeaderSize + yListViewSize + (kStatusBarSize - bh) / 2;
+    const HWND b1 = ::GetDlgItem(*this, kViewBtnID_Details);
+    const HWND b2 = ::GetDlgItem(*this, kViewBtnID_Icons);
+    // SWP_NOCOPYBITS: buttons are drawn again at new place (no old copied pixels)
+    if (b1)
+      ::SetWindowPos(b1, HWND_TOP, x1, y, bw, bh, SWP_NOACTIVATE | SWP_NOCOPYBITS);
+    if (b2)
+      ::SetWindowPos(b2, HWND_TOP, x2, y, bw, bh, SWP_NOACTIVATE | SWP_NOCOPYBITS);
+    if (b1) ::InvalidateRect(b1, NULL, FALSE);
+    if (b2) ::InvalidateRect(b2, NULL, FALSE);
+    // last part of status bar ends before the buttons
+    int last = x1 - 4;
+    if (last < 430)
+      last = 430;
+    const int sizes[] = { 220, 320, 420, last };
+    _statusBar.SetParts(4, sizes);
+    // status bar: remove old pictures of buttons from previous place
+    _statusBar.InvalidateRect(NULL, true);
+  }
   // _statusBar2.MoveWindow(0, kHeaderSize + yListViewSize + kStatusBarSize, xSize, kStatusBar2Size);
   // _statusBar.MoveWindow(0, 100, xSize, kStatusBarSize);
   // _statusBar2.MoveWindow(0, 200, xSize, kStatusBar2Size);
@@ -998,6 +1121,13 @@ bool CPanel::OnCommand(unsigned code, unsigned itemID, LPARAM lParam, LRESULT &r
   {
     if (OnComboBoxCommand(code, lParam, result))
       return true;
+  }
+  if (itemID == (unsigned)kViewBtnID_Details || itemID == (unsigned)kViewBtnID_Icons)
+  {
+    SetListViewMode(itemID == (unsigned)kViewBtnID_Details ? kViewMode_Details : kViewMode_Icons);
+    _listView.SetFocus();
+    result = 0;
+    return true;
   }
   return CWindow2::OnCommand(code, itemID, lParam, result);
 }
@@ -1133,6 +1263,13 @@ void CPanel::SetListViewMode(UInt32 index)
   // DWORD tickCount1 = GetTickCount();
   if ((oldStyle & LVS_TYPEMASK) != (LONG_PTR)newStyle)
     _listView.SetStyle((oldStyle & ~(LONG_PTR)(DWORD)LVS_TYPEMASK) | (LONG_PTR)newStyle);
+  {
+    // "Details" / "Large Icons" buttons show current view
+    const HWND b1 = ::GetDlgItem(*this, kViewBtnID_Details);
+    const HWND b2 = ::GetDlgItem(*this, kViewBtnID_Icons);
+    if (b1) ::InvalidateRect(b1, NULL, FALSE);
+    if (b2) ::InvalidateRect(b2, NULL, FALSE);
+  }
   // RefreshListCtrlSaveFocused();
   /*
   DWORD tickCount2 = GetTickCount();
