@@ -85,6 +85,42 @@ static void ConvertSizeToString(UInt64 val, wchar_t *s) throw()
   *s = 0;
 }
 
+// "Size in KB" option (View menu): Size and Packed Size columns in KB, like in Windows Explorer.
+// Saved in registry. Default: on.
+static int g_SizeInKB = -1; // -1 : not loaded yet
+
+bool GetListSizeInKB()
+{
+  if (g_SizeInKB < 0)
+  {
+    g_SizeInKB = 1;
+    HKEY key;
+    if (::RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\7-Zip\\FM", 0, KEY_READ, &key) == ERROR_SUCCESS)
+    {
+      DWORD value = 0;
+      DWORD type = 0;
+      DWORD size = sizeof(value);
+      if (::RegQueryValueExW(key, L"SizeInKB", NULL, &type, (LPBYTE)&value, &size) == ERROR_SUCCESS
+          && type == REG_DWORD)
+        g_SizeInKB = (value != 0) ? 1 : 0;
+      ::RegCloseKey(key);
+    }
+  }
+  return g_SizeInKB != 0;
+}
+
+void SetListSizeInKB(bool inKB)
+{
+  g_SizeInKB = inKB ? 1 : 0;
+  HKEY key;
+  if (::RegCreateKeyExW(HKEY_CURRENT_USER, L"Software\\7-Zip\\FM", 0, NULL, 0, KEY_WRITE, NULL, &key, NULL) == ERROR_SUCCESS)
+  {
+    const DWORD value = inKB ? 1 : 0;
+    ::RegSetValueExW(key, L"SizeInKB", 0, REG_DWORD, (const BYTE *)&value, sizeof(value));
+    ::RegCloseKey(key);
+  }
+}
+
 UString ConvertSizeToString(UInt64 value);
 UString ConvertSizeToString(UInt64 value)
 {
@@ -486,7 +522,15 @@ LRESULT CPanel::SetItemText(LVITEMW &item)
   {
     UInt64 v = 0;
     ConvertPropVariantToUInt64(prop, v);
-    ConvertSizeToString(v, text);
+    if ((propID == kpidSize || propID == kpidPackSize) && GetListSizeInKB())
+    {
+      // like in Windows Explorer: rounded up, "1 KB" for 1..1024 bytes
+      const UInt64 kb = (v / 1024) + ((v % 1024) != 0 ? 1 : 0);
+      ConvertSizeToString(kb, text);
+      MyStringCopy(text + MyStringLen(text), L" KB");
+    }
+    else
+      ConvertSizeToString(v, text);
   }
   else if (prop.vt == VT_BSTR)
   {

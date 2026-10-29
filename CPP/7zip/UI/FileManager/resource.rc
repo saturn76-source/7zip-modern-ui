@@ -110,6 +110,7 @@ BEGIN
     MENUITEM "Zoom &In\tCtrl++",            IDM_VIEW_ZOOM_IN
     MENUITEM "Zoom &Out\tCtrl+-",           IDM_VIEW_ZOOM_OUT
     MENUITEM "Reset &Zoom\tCtrl+0",         IDM_VIEW_ZOOM_RESET
+    MENUITEM "Size in &KB",                 IDM_VIEW_SIZE_KB
     MY_MENUITEM_SEPARATOR
     MENUITEM "Name\tCtrl+F3",               IDM_VIEW_ARANGE_BY_NAME
     MENUITEM "Type\tCtrl+F4",               IDM_VIEW_ARANGE_BY_TYPE

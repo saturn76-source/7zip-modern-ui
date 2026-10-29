@@ -356,6 +356,14 @@ public:
   }
   void ApplyTheme();
   void SetThemeMode(int mode);
+  // "Size in KB" option: Size and Packed Size columns in KB
+  void SwitchSizeInKB()
+  {
+    SetListSizeInKB(!GetListSizeInKB());
+    for (unsigned i = 0; i < kNumPanelsMax; i++)
+      if (Panels[i].PanelCreated)
+        Panels[i]._listView.InvalidateRect(NULL, true);
+  }
   // file list zoom: dir > 0 - zoom in, dir < 0 - zoom out, 0 - 100%
   void ZoomList(int dir)
   {

@@ -116,6 +116,7 @@
 #define IDM_VIEW_TOOLBARS_MODERN1   563
 #define IDM_VIEW_TOOLBARS_MODERN2   564
 #define IDM_VIEW_TOOLBARS_MODERN3   565
+#define IDM_VIEW_SIZE_KB            566
 
 #define IDM_VER_EDIT             580
 #define IDM_VER_COMMIT           581

@@ -217,6 +217,10 @@ class CPanel;
 int GetListZoom();
 bool ChangeListZoom(int dir); // returns true, if zoom was changed
 
+// "Size in KB" option of file list (View menu), saved in registry
+bool GetListSizeInKB();
+void SetListSizeInKB(bool inKB);
+
 class CMyListView Z7_final: public NWindows::NControl::CListView2
 {
   // ~CMyListView() ZIP7_eq_delete;
