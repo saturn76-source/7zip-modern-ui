@@ -35,6 +35,7 @@
 #include "../Explorer/resource.h"
 
 extern CCodecs *g_CodecsObj;
+HRESULT LoadGlobalCodecs(); // 7-Zip loads list of formats at first use
 
 using namespace NWindows;
 using namespace NFile;
@@ -2535,6 +2536,7 @@ Z7_COMWF_B CDropTarget::Drop(IDataObject *dataObject, DWORD keyState,
       && m_Panel->_parentFolders.IsEmpty()
       && !m_Panel->IsArcFolder()
       && m_SourcePaths.Size() == 1
+      && (g_CodecsObj || LoadGlobalCodecs() == S_OK)
       && g_CodecsObj)
   {
     const UString &path = m_SourcePaths[0];

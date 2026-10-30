@@ -16,6 +16,7 @@
 using namespace NWindows;
 
 extern CCodecs *g_CodecsObj;
+HRESULT LoadGlobalCodecs();
 
 bool CSelectArchiveDialog::OnInit()
 {
@@ -52,6 +53,8 @@ bool CSelectArchiveDialog::OnButtonClicked(unsigned buttonID, HWND buttonHWND)
 void CSelectArchiveDialog::OnBrowse()
 {
   CObjectVector<CBrowseFilterInfo> filters;
+  if (!g_CodecsObj)
+    LoadGlobalCodecs();
   if (g_CodecsObj)
   {
     // all archive extensions that 7-Zip can open

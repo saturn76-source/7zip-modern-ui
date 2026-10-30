@@ -36,6 +36,7 @@
 #include "../Common/LoadCodecs.h"
 
 extern CCodecs *g_CodecsObj;
+HRESULT LoadGlobalCodecs(); // 7-Zip loads list of formats at first use
 #include "RootFolder.h"
 
 #include "PropertyNameRes.h"
@@ -1418,6 +1419,8 @@ void CPanel::EasyExtract()
   CRecordVector<UInt32> indices;
   Get_ItemIndices_Operated(indices);
   // we use only archive files from selection (folders and other files are skipped)
+  if (!g_CodecsObj)
+    LoadGlobalCodecs();
   UStringVector paths;
   {
     UStringVector allPaths;
