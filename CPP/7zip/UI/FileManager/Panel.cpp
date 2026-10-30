@@ -1072,6 +1072,24 @@ void CPanel::ApplyListZoom()
   const LONG_PTR style = _listView.GetStyle();
   if ((style & LVS_TYPEMASK) == LVS_ICON)
     _listView.SendMsg(LVM_ARRANGE, LVA_DEFAULT, 0);
+  {
+    /* list view calculates height of header (column titles) only when its size is changed.
+       So we change the size for a moment: header gets height for new font. */
+    RECT r;
+    if (::GetWindowRect(_listView, &r))
+    {
+      POINT p = { r.left, r.top };
+      ::ScreenToClient(::GetParent(_listView), &p);
+      const int w = r.right - r.left;
+      const int h = r.bottom - r.top;
+      const UINT flags = SWP_NOZORDER | SWP_NOACTIVATE;
+      ::SetWindowPos(_listView, NULL, p.x, p.y, w, h + 1, flags);
+      ::SetWindowPos(_listView, NULL, p.x, p.y, w, h, flags);
+    }
+    const HWND header = ListView_GetHeader(_listView);
+    if (header)
+      ::InvalidateRect(header, NULL, TRUE);
+  }
   _listView.InvalidateRect(NULL, true);
   {
     // zoom value on status bar button
