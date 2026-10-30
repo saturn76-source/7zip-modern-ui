@@ -209,6 +209,11 @@ enum MyMessages
   #endif
 };
 
+// archive file was dropped from Windows Explorer to panel with normal folder:
+// we open that archive (path is in g_DroppedArchivePath)
+const UINT kOpenDroppedArchiveMessage = WM_USER + 40;
+extern UString g_DroppedArchivePath;
+
 UString GetFolderPath(IFolderFolder *folder);
 
 class CPanel;

@@ -209,6 +209,17 @@ LRESULT CPanel::OnMessage(UINT message, WPARAM wParam, LPARAM lParam)
       if (_processStatusBar)
         Refresh_StatusBar();
       return 0;
+    case kOpenDroppedArchiveMessage:
+    {
+      const UString path = g_DroppedArchivePath;
+      g_DroppedArchivePath.Empty();
+      if (!path.IsEmpty())
+      {
+        BindToPathAndRefresh(path);
+        _listView.SetFocus();
+      }
+      return 0;
+    }
     #ifdef UNDER_CE
     case kRefresh_HeaderComboBox:
       LoadFullPathAndShow();

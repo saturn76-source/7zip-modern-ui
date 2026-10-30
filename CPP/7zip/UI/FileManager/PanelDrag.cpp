@@ -22,6 +22,7 @@
 #include "../Common/ArchiveName.h"
 #include "../Common/CompressCall.h"
 #include "../Common/ExtractingFilePath.h"
+#include "../Common/LoadCodecs.h"
 
 #include "MessagesDialog.h"
 
@@ -32,6 +33,8 @@
 
 #include "resource.h"
 #include "../Explorer/resource.h"
+
+extern CCodecs *g_CodecsObj;
 
 using namespace NWindows;
 using namespace NFile;
@@ -2523,6 +2526,34 @@ Z7_COMWF_B CDropTarget::Drop(IDataObject *dataObject, DWORD keyState,
   */
   if (!m_DropIsAllowed) LoadNames_From_DataObject(dataObject);
   PositionCursor(pt);
+
+  /* One archive file was dropped from Windows Explorer (not from 7-Zip),
+     and the panel shows normal folder (not archive):
+     we open that archive, like double click on it. */
+  if (!m_IsRightButton && m_Panel
+      && !m_TargetPath_WasSent_ToDataObject
+      && m_Panel->_parentFolders.IsEmpty()
+      && !m_Panel->IsArcFolder()
+      && m_SourcePaths.Size() == 1
+      && g_CodecsObj)
+  {
+    const UString &path = m_SourcePaths[0];
+    const DWORD attrib = ::GetFileAttributesW(path);
+    if (attrib != INVALID_FILE_ATTRIBUTES
+        && (attrib & FILE_ATTRIBUTE_DIRECTORY) == 0
+        && g_CodecsObj->FindFormatForArchiveName(path) >= 0)
+    {
+      // we open archive later (after Drop()), because Explorer waits for Drop() return
+      g_DroppedArchivePath = path;
+      ::PostMessageW(*m_Panel, kOpenDroppedArchiveMessage, 0, 0);
+      SendToSource_UInt32(dataObject,
+          RegisterClipboardFormat(CFSTR_PERFORMEDDROPEFFECT), DROPEFFECT_NONE);
+      RemoveSelection();
+      ClearState();
+      *effect = DROPEFFECT_NONE;
+      return S_OK;
+    }
+  }
   
   CPanel::CDisableTimerProcessing2 disableTimerProcessing(m_Panel);
   // CDisableNotify disableNotify2(m_Panel);
@@ -2770,6 +2801,8 @@ Z7_COMWF_B CDropTarget::Drop(IDataObject *dataObject, DWORD keyState,
 
 
 // ---------- CPanel ----------
+
+UString g_DroppedArchivePath;
 
 
 static bool Is_Path1_Prefixed_by_Path2(const UString &path, const UString &prefix)
