@@ -29,7 +29,7 @@ static const COLORREF k_Dark_Hot     = RGB(80, 80, 80);
 static const COLORREF k_Dark_Border  = RGB(90, 90, 90);
 static const COLORREF k_Dark_Select  = RGB(130, 60, 60);
 
-static EThemeMode g_Mode = k_Theme_Light;
+static EThemeMode g_Mode = k_Theme_Auto; // default (no saved setting): follow Windows
 static bool g_IsDark = false;
 
 static HBRUSH g_Brush_Bk;

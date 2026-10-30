@@ -140,7 +140,7 @@ BEGIN
       MY_MENUITEM_SEPARATOR
       MENUITEM "&Customize...",             IDM_VIEW_TOOLBARS_CUSTOMIZE
     END
-    POPUP "T&heme" MY_MENUITEM_ID(IDM_VIEW_THEME)
+    POPUP "Color T&heme" MY_MENUITEM_ID(IDM_VIEW_THEME)
     BEGIN
       MENUITEM "&Light",                    IDM_THEME_LIGHT
       MENUITEM "&Dark",                     IDM_THEME_DARK
