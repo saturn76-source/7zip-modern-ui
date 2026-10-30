@@ -59,8 +59,54 @@ static const int kViewBtnID_Details = 0x6F01;
 static const int kViewBtnID_Icons   = 0x6F02;
 static const UInt32 kViewMode_Icons   = 0; // index in kStyles[]
 static const UInt32 kViewMode_Details = 3;
+// zoom buttons (left of view buttons): "-", "100%" (reset), "+"
+static const int kZoomBtnID_Out   = 0x6F03;
+static const int kZoomBtnID_Reset = 0x6F04;
+static const int kZoomBtnID_In    = 0x6F05;
 
-static void DrawViewButton(const DRAWITEMSTRUCT *dis, bool isDetails, bool checked)
+enum EStatusButtonKind
+{
+  k_SBtn_Details,
+  k_SBtn_Icons,
+  k_SBtn_ZoomOut,
+  k_SBtn_ZoomReset,
+  k_SBtn_ZoomIn
+};
+
+// mouse over (hot) state of status bar buttons
+static const wchar_t * const k_Prop_HotButton = L"7zHotBtn";
+
+static LRESULT CALLBACK StatusButtonSubclassProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam,
+    UINT_PTR /* idSubclass */, DWORD_PTR /* refData */)
+{
+  if (message == WM_MOUSEMOVE)
+  {
+    if (!::GetPropW(hwnd, k_Prop_HotButton))
+    {
+      ::SetPropW(hwnd, k_Prop_HotButton, (HANDLE)1);
+      TRACKMOUSEEVENT tme;
+      tme.cbSize = sizeof(tme);
+      tme.dwFlags = TME_LEAVE;
+      tme.hwndTrack = hwnd;
+      tme.dwHoverTime = 0;
+      ::TrackMouseEvent(&tme);
+      ::InvalidateRect(hwnd, NULL, FALSE);
+    }
+  }
+  else if (message == WM_MOUSELEAVE)
+  {
+    ::RemovePropW(hwnd, k_Prop_HotButton);
+    ::InvalidateRect(hwnd, NULL, FALSE);
+  }
+  else if (message == WM_NCDESTROY)
+  {
+    ::RemovePropW(hwnd, k_Prop_HotButton);
+    ::RemoveWindowSubclass(hwnd, StatusButtonSubclassProc, 1);
+  }
+  return ::DefSubclassProc(hwnd, message, wParam, lParam);
+}
+
+static void DrawViewButton(const DRAWITEMSTRUCT *dis, int kind, bool checked, HFONT font)
 {
   const HDC dc = dis->hDC;
   const RECT rc = dis->rcItem;
@@ -71,10 +117,17 @@ static void DrawViewButton(const DRAWITEMSTRUCT *dis, bool isDetails, bool check
     ::DeleteObject(br);
   }
   const bool pressed = (dis->itemState & ODS_SELECTED) != 0;
-  if (checked || pressed)
+  const bool hot = (::GetPropW(dis->hwndItem, k_Prop_HotButton) != NULL);
+  if (checked || pressed || hot)
   {
-    const COLORREF fill = dark ? RGB(85, 85, 85) : RGB(204, 228, 247);
-    const COLORREF line = dark ? RGB(120, 120, 120) : RGB(153, 209, 255);
+    // pressed / checked: stronger color; mouse over only: lighter color
+    const bool strong = (checked || pressed);
+    const COLORREF fill = dark ?
+        (strong ? RGB(85, 85, 85) : RGB(66, 66, 66)) :
+        (strong ? RGB(204, 228, 247) : RGB(229, 241, 251));
+    const COLORREF line = dark ?
+        (strong ? RGB(120, 120, 120) : RGB(95, 95, 95)) :
+        (strong ? RGB(153, 209, 255) : RGB(204, 228, 247));
     const HBRUSH br = ::CreateSolidBrush(fill);
     const HPEN pen = ::CreatePen(PS_SOLID, 1, line);
     const HGDIOBJ oldBr = ::SelectObject(dc, br);
@@ -93,8 +146,37 @@ static void DrawViewButton(const DRAWITEMSTRUCT *dis, bool isDetails, bool check
     s = 8;
   const int x0 = rc.left + (w - s) / 2;
   const int y0 = rc.top + (h - s) / 2;
-  const HBRUSH br = ::CreateSolidBrush(dark ? RGB(225, 225, 225) : RGB(60, 60, 60));
-  if (isDetails)
+  const COLORREF fg = dark ? RGB(225, 225, 225) : RGB(60, 60, 60);
+  const HBRUSH br = ::CreateSolidBrush(fg);
+  if (kind == k_SBtn_ZoomReset)
+  {
+    // text: current zoom, for example "100%"
+    wchar_t text[32];
+    ConvertUInt32ToString((UInt32)GetListZoom(), text);
+    MyStringCopy(text + MyStringLen(text), L"%");
+    const HGDIOBJ oldFont = font ? ::SelectObject(dc, font) : NULL;
+    ::SetBkMode(dc, TRANSPARENT);
+    ::SetTextColor(dc, fg);
+    RECT tr = rc;
+    ::DrawTextW(dc, text, -1, &tr, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
+    if (oldFont)
+      ::SelectObject(dc, oldFont);
+  }
+  else if (kind == k_SBtn_ZoomOut || kind == k_SBtn_ZoomIn)
+  {
+    // "-" or "+"
+    const int t = s / 6 > 1 ? s / 6 : 2; // line thickness
+    const int cx = x0 + s / 2;
+    const int cy = y0 + s / 2;
+    RECT rh = { x0 + s / 8, cy - t / 2, x0 + s - s / 8, cy - t / 2 + t };
+    ::FillRect(dc, &rh, br);
+    if (kind == k_SBtn_ZoomIn)
+    {
+      RECT rv = { cx - t / 2, y0 + s / 8, cx - t / 2 + t, y0 + s - s / 8 };
+      ::FillRect(dc, &rv, br);
+    }
+  }
+  else if (kind == k_SBtn_Details)
   {
     // 3 rows: small square + line
     const int rowH = s / 5 > 1 ? s / 5 : 2;
@@ -241,11 +323,20 @@ LRESULT CPanel::OnMessage(UINT message, WPARAM wParam, LPARAM lParam)
     case WM_DRAWITEM:
     {
       const DRAWITEMSTRUCT *dis = (const DRAWITEMSTRUCT *)lParam;
-      if (dis && (dis->CtlID == (UINT)kViewBtnID_Details || dis->CtlID == (UINT)kViewBtnID_Icons))
+      if (dis && dis->CtlID >= (UINT)kViewBtnID_Details && dis->CtlID <= (UINT)kZoomBtnID_In)
       {
-        const bool isDetails = (dis->CtlID == (UINT)kViewBtnID_Details);
         const UInt32 mode = GetListViewMode();
-        DrawViewButton(dis, isDetails, isDetails ? (mode == kViewMode_Details) : (mode == kViewMode_Icons));
+        int kind;
+        bool checked = false;
+        switch (dis->CtlID)
+        {
+          case kViewBtnID_Details: kind = k_SBtn_Details; checked = (mode == kViewMode_Details); break;
+          case kViewBtnID_Icons:   kind = k_SBtn_Icons;   checked = (mode == kViewMode_Icons); break;
+          case kZoomBtnID_Out:     kind = k_SBtn_ZoomOut; break;
+          case kZoomBtnID_Reset:   kind = k_SBtn_ZoomReset; break;
+          default:                 kind = k_SBtn_ZoomIn; break;
+        }
+        DrawViewButton(dis, kind, checked, (HFONT)_statusBar.SendMsg(WM_GETFONT, 0, 0));
         return TRUE;
       }
       break;
@@ -702,9 +793,29 @@ bool CPanel::OnCreate(CREATESTRUCT * /* createStruct */)
         WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
         0, 0, 1, 1, *this, (HMENU)(UINT_PTR)kViewBtnID_Icons, g_hInstance, NULL);
     if (b1)
+    {
       ::SetWindowPos(b1, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+      ::SetWindowSubclass(b1, StatusButtonSubclassProc, 1, 0);
+    }
     if (b2)
+    {
       ::SetWindowPos(b2, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+      ::SetWindowSubclass(b2, StatusButtonSubclassProc, 1, 0);
+    }
+    // zoom buttons
+    const int kZoomIDs[] = { kZoomBtnID_Out, kZoomBtnID_Reset, kZoomBtnID_In };
+    const wchar_t * const kZoomNames[] = { L"Zoom Out", L"Reset Zoom", L"Zoom In" };
+    for (unsigned k = 0; k < 3; k++)
+    {
+      const HWND b = ::CreateWindowExW(0, L"BUTTON", kZoomNames[k],
+          WS_CHILD | WS_VISIBLE | BS_OWNERDRAW,
+          0, 0, 1, 1, *this, (HMENU)(UINT_PTR)kZoomIDs[k], g_hInstance, NULL);
+      if (b)
+      {
+        ::SetWindowPos(b, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        ::SetWindowSubclass(b, StatusButtonSubclassProc, 1, 0);
+      }
+    }
   }
   // _statusBar2.SetParts(5, sizes);
 
@@ -962,6 +1073,12 @@ void CPanel::ApplyListZoom()
   if ((style & LVS_TYPEMASK) == LVS_ICON)
     _listView.SendMsg(LVM_ARRANGE, LVA_DEFAULT, 0);
   _listView.InvalidateRect(NULL, true);
+  {
+    // zoom value on status bar button
+    const HWND b = ::GetDlgItem(*this, kZoomBtnID_Reset);
+    if (b)
+      ::InvalidateRect(b, NULL, FALSE);
+  }
 }
 
 void CPanel::OnDestroy()
@@ -1021,8 +1138,26 @@ void CPanel::ChangeWindowSize(int xSize, int ySize)
       ::SetWindowPos(b2, HWND_TOP, x2, y, bw, bh, SWP_NOACTIVATE | SWP_NOCOPYBITS);
     if (b1) ::InvalidateRect(b1, NULL, FALSE);
     if (b2) ::InvalidateRect(b2, NULL, FALSE);
+    // zoom buttons: [-] [100%] [+] left of view buttons
+    const int rw = bh * 2 + bh / 2; // "100%" button
+    const int xIn = x1 - 10 - 40 - bw; // 40 pixels more space between zoom and view buttons
+    const int xReset = xIn - 2 - rw;
+    const int xOut = xReset - 2 - bw;
+    {
+      const int ids[] = { kZoomBtnID_Out, kZoomBtnID_Reset, kZoomBtnID_In };
+      const int xs[] = { xOut, xReset, xIn };
+      const int ws[] = { bw, rw, bw };
+      for (unsigned k = 0; k < 3; k++)
+      {
+        const HWND b = ::GetDlgItem(*this, ids[k]);
+        if (!b)
+          continue;
+        ::SetWindowPos(b, HWND_TOP, xs[k], y, ws[k], bh, SWP_NOACTIVATE | SWP_NOCOPYBITS);
+        ::InvalidateRect(b, NULL, FALSE);
+      }
+    }
     // last part of status bar ends before the buttons
-    int last = x1 - 4;
+    int last = xOut - 4;
     if (last < 430)
       last = 430;
     const int sizes[] = { 220, 320, 420, last };
@@ -1138,6 +1273,15 @@ bool CPanel::OnCommand(unsigned code, unsigned itemID, LPARAM lParam, LRESULT &r
   {
     if (OnComboBoxCommand(code, lParam, result))
       return true;
+  }
+  if (itemID == (unsigned)kZoomBtnID_Out || itemID == (unsigned)kZoomBtnID_Reset || itemID == (unsigned)kZoomBtnID_In)
+  {
+    ::SendMessageW(g_HWND, WM_COMMAND,
+        itemID == (unsigned)kZoomBtnID_Out ? IDM_VIEW_ZOOM_OUT :
+        itemID == (unsigned)kZoomBtnID_In ? IDM_VIEW_ZOOM_IN : IDM_VIEW_ZOOM_RESET, 0);
+    _listView.SetFocus();
+    result = 0;
+    return true;
   }
   if (itemID == (unsigned)kViewBtnID_Details || itemID == (unsigned)kViewBtnID_Icons)
   {
