@@ -1,0 +1,7 @@
+#define IDD_SELECT_ARC      7920
+
+#define IDC_SELARC_ICON     100
+#define IDT_SELARC_TEXT     101
+#define IDT_SELARC_LABEL    102
+#define IDC_SELARC_NAME     103
+#define IDB_SELARC_BROWSE   104

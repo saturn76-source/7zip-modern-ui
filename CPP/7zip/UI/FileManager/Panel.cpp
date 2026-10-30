@@ -8,6 +8,7 @@
 #include "../../../Common/StringConvert.h"
 
 #include "../../../Windows/ErrorMsg.h"
+#include "../../../Windows/FileFind.h"
 #include "../../../Windows/FileName.h"
 #include "../../../Windows/PropVariant.h"
 #include "../../../Windows/Thread.h"
@@ -31,6 +32,10 @@
 #include "Panel.h"
 #include "DarkMode.h"
 #include "CopyDialog.h"
+#include "SelectArchiveDialog.h"
+#include "../Common/LoadCodecs.h"
+
+extern CCodecs *g_CodecsObj;
 #include "RootFolder.h"
 
 #include "PropertyNameRes.h"
@@ -1412,13 +1417,46 @@ void CPanel::EasyExtract()
   }
   CRecordVector<UInt32> indices;
   Get_ItemIndices_Operated(indices);
-  if (indices.IsEmpty() || FindDir_InOperatedList(indices) != -1)
-  {
-    MessageBox_Error_LangID(IDS_SELECT_FILES);
-    return;
-  }
+  // we use only archive files from selection (folders and other files are skipped)
   UStringVector paths;
-  GetFilePaths(indices, paths);
+  {
+    UStringVector allPaths;
+    GetFilePaths(indices, allPaths);
+    FOR_VECTOR (i, allPaths)
+    {
+      const UString &path = allPaths[i];
+      const DWORD attrib = ::GetFileAttributesW(path);
+      if (attrib == INVALID_FILE_ATTRIBUTES || (attrib & FILE_ATTRIBUTE_DIRECTORY) != 0)
+        continue;
+      if (g_CodecsObj && g_CodecsObj->FindFormatForArchiveName(path) < 0)
+        continue;
+      paths.Add(path);
+    }
+  }
+  if (paths.IsEmpty())
+  {
+    // no archive is selected: user can type archive name or use "Browse..."
+    CSelectArchiveDialog dialog;
+    dialog.FolderPrefix = GetFsPath();
+    {
+      // archives in current folder for drop-down list
+      NWindows::NFile::NFind::CEnumerator enumerator;
+      enumerator.SetDirPrefix(us2fs(dialog.FolderPrefix));
+      NWindows::NFile::NFind::CFileInfo fi;
+      while (enumerator.Next(fi) && dialog.Names.Size() < 500)
+      {
+        if (fi.IsDir())
+          continue;
+        const UString name = fs2us(fi.Name);
+        if (g_CodecsObj && g_CodecsObj->FindFormatForArchiveName(name) < 0)
+          continue;
+        dialog.Names.Add(name);
+      }
+    }
+    if (dialog.Create(GetParent()) != IDOK)
+      return;
+    paths.Add(dialog.Path);
+  }
   EasyExtractFiles(paths);
 }
 

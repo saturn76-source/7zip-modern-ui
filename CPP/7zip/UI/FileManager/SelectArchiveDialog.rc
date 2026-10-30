@@ -1,0 +1,19 @@
+#include "SelectArchiveDialogRes.h"
+#include "../../GuiCommon.rc"
+
+#define xc 260
+#define yc 86
+
+IDD_SELECT_ARC  DIALOG  0, 0, xs, ys  MY_MODAL_DIALOG_STYLE  MY_FONT
+CAPTION "Easy Extract"
+{
+  CONTROL     "", IDC_SELARC_ICON, "Static", SS_ICON, m, m, 20, 20
+  LTEXT       "", IDT_SELARC_TEXT, m + 30, m + 2, xc - 30, 20
+  LTEXT       "&Archive name", IDT_SELARC_LABEL, m, 44, 120, 8
+  PUSHBUTTON  "Browse...", IDB_SELARC_BROWSE, xs - m - bxs, 38, bxs, bys
+  COMBOBOX    IDC_SELARC_NAME, m, 56, xc, 120, CBS_DROPDOWN | CBS_AUTOHSCROLL | WS_VSCROLL | WS_TABSTOP
+  OK_CANCEL
+}
+
+#undef xc
+#undef yc

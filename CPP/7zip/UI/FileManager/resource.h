@@ -262,6 +262,7 @@
 #define IDS_EASY_EXTRACT_TO             7223
 #define IDS_EASY_EXTRACT_OPEN           7224
 #define IDS_EASY_EXTRACT_STAR           7225
+#define IDS_EASY_EXTRACT_SELECT_ARC     7226
 
 #define IDI_EASY_EXTRACT  210
 
