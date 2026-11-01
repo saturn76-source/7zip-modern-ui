@@ -649,6 +649,16 @@ static bool GetKnownFolder(const GUID &id, UString &path, UString &name, int &ic
   return true;
 }
 
+// for top level (root) list: 0 - Desktop, 1 - Downloads, 2 - Pictures, 3 - Videos
+bool GetKnownFolder_ForRoot(unsigned index, UString &path, UString &name, int &iconIndex);
+bool GetKnownFolder_ForRoot(unsigned index, UString &path, UString &name, int &iconIndex)
+{
+  const GUID * const k_Ids[] = { &k_FOLDERID_Desktop, &k_FOLDERID_Downloads, &k_FOLDERID_Pictures, &k_FOLDERID_Videos };
+  if (index >= Z7_ARRAY_SIZE(k_Ids))
+    return false;
+  return GetKnownFolder(*k_Ids[index], path, name, iconIndex);
+}
+
 #endif
 
 void CPanel::AddComboBoxItem(const UString &name, int iconIndex, unsigned indent, bool addToList)

@@ -22,13 +22,6 @@
 #define USE_WIN_PATHS
 #endif
 
-static const unsigned kNumRootFolderItems =
-  #ifdef USE_WIN_PATHS
-  4
-  #else
-  1
-  #endif
-  ;
 
 
 #include "FSFolder.h"
@@ -82,21 +75,63 @@ enum
   , ROOT_INDEX_DOCUMENTS
   , ROOT_INDEX_NETWORK
   , ROOT_INDEX_VOLUMES
+  , ROOT_INDEX_KNOWN // Desktop, Downloads, Pictures, Videos
   #endif
 };
 
 #ifdef USE_WIN_PATHS
 static const char * const kVolPrefix = "\\\\.";
+// Desktop, Downloads, Pictures, Videos (PanelFolderChange.cpp)
+bool GetKnownFolder_ForRoot(unsigned index, UString &path, UString &name, int &iconIndex);
 #endif
 
+void CRootFolder::AddItem(int kind, const UString &name, int iconIndex, const UString &path)
+{
+  if (_numItems >= kNumRootFolderItems_Max)
+    return;
+  _kinds[_numItems] = kind;
+  _names[_numItems] = name;
+  _iconIndices[_numItems] = iconIndex;
+  _paths[_numItems] = path;
+  _numItems++;
+}
+
+int CRootFolder::FindKind(int kind) const
+{
+  for (unsigned i = 0; i < _numItems; i++)
+    if (_kinds[i] == kind)
+      return (int)i;
+  return -1;
+}
+
+/* order of items in top level list:
+     Computer, Desktop, Downloads, Documents, Videos, Pictures, Network, \\.
+   (the list is not sorted by name, see CompareItems() in PanelSort.cpp) */
 void CRootFolder::Init()
 {
-  _names[ROOT_INDEX_COMPUTER] = RootFolder_GetName_Computer(_iconIndices[ROOT_INDEX_COMPUTER]);
+  _numItems = 0;
+  int iconIndex = -1;
+  UString name = RootFolder_GetName_Computer(iconIndex);
+  AddItem(ROOT_INDEX_COMPUTER, name, iconIndex, UString());
   #ifdef USE_WIN_PATHS
-  _names[ROOT_INDEX_DOCUMENTS] = RootFolder_GetName_Documents(_iconIndices[ROOT_INDEX_DOCUMENTS]);
-  _names[ROOT_INDEX_NETWORK] = RootFolder_GetName_Network(_iconIndices[ROOT_INDEX_NETWORK]);
-  _names[ROOT_INDEX_VOLUMES] = kVolPrefix;
-  _iconIndices[ROOT_INDEX_VOLUMES] = Shell_GetFileInfo_SysIconIndex_for_CSIDL(CSIDL_DRIVES);
+  // known folder index in GetKnownFolder_ForRoot(): 0 - Desktop, 1 - Downloads, 2 - Pictures, 3 - Videos
+  const int kOrder[] = { 0, 1, -1, 3, 2 }; // -1 : Documents
+  for (unsigned k = 0; k < Z7_ARRAY_SIZE(kOrder); k++)
+  {
+    if (kOrder[k] < 0)
+    {
+      name = RootFolder_GetName_Documents(iconIndex);
+      AddItem(ROOT_INDEX_DOCUMENTS, name, iconIndex, UString());
+      continue;
+    }
+    UString path;
+    if (GetKnownFolder_ForRoot((unsigned)kOrder[k], path, name, iconIndex))
+      AddItem(ROOT_INDEX_KNOWN, name, iconIndex, path);
+  }
+  name = RootFolder_GetName_Network(iconIndex);
+  AddItem(ROOT_INDEX_NETWORK, name, iconIndex, UString());
+  AddItem(ROOT_INDEX_VOLUMES, UString(kVolPrefix),
+      Shell_GetFileInfo_SysIconIndex_for_CSIDL(CSIDL_DRIVES), UString());
   #endif
 }
 
@@ -108,7 +143,7 @@ Z7_COM7F_IMF(CRootFolder::LoadItems())
 
 Z7_COM7F_IMF(CRootFolder::GetNumberOfItems(UInt32 *numItems))
 {
-  *numItems = kNumRootFolderItems;
+  *numItems = _numItems;
   return S_OK;
 }
 
@@ -175,22 +210,25 @@ static UString GetMyDocsPath()
 Z7_COM7F_IMF(CRootFolder::BindToFolder(UInt32 index, IFolderFolder **resultFolder))
 {
   *resultFolder = NULL;
+  if (index >= _numItems)
+    return E_INVALIDARG;
+  const int kind = _kinds[index];
   CMyComPtr<IFolderFolder> subFolder;
 
   #ifdef USE_WIN_PATHS
-  if (index == ROOT_INDEX_COMPUTER || index == ROOT_INDEX_VOLUMES)
+  if (kind == ROOT_INDEX_COMPUTER || kind == ROOT_INDEX_VOLUMES)
   {
     CFSDrives *fsDrivesSpec = new CFSDrives;
     subFolder = fsDrivesSpec;
-    fsDrivesSpec->Init(index == ROOT_INDEX_VOLUMES);
+    fsDrivesSpec->Init(kind == ROOT_INDEX_VOLUMES);
   }
-  else if (index == ROOT_INDEX_NETWORK)
+  else if (kind == ROOT_INDEX_NETWORK)
   {
     CNetFolder *netFolderSpec = new CNetFolder;
     subFolder = netFolderSpec;
-    netFolderSpec->Init(NULL, NULL, _names[ROOT_INDEX_NETWORK] + WCHAR_PATH_SEPARATOR);
+    netFolderSpec->Init(NULL, NULL, _names[index] + WCHAR_PATH_SEPARATOR);
   }
-  else if (index == ROOT_INDEX_DOCUMENTS)
+  else if (kind == ROOT_INDEX_DOCUMENTS)
   {
     UString s = GetMyDocsPath();
     if (!s.IsEmpty())
@@ -200,8 +238,15 @@ Z7_COM7F_IMF(CRootFolder::BindToFolder(UInt32 index, IFolderFolder **resultFolde
       RINOK(fsFolderSpec->Init(us2fs(s)))
     }
   }
+  else if (kind == ROOT_INDEX_KNOWN)
+  {
+    // Desktop, Downloads, Pictures, Videos
+    NFsFolder::CFSFolder *fsFolderSpec = new NFsFolder::CFSFolder;
+    subFolder = fsFolderSpec;
+    RINOK(fsFolderSpec->Init(us2fs(_paths[index])))
+  }
   #else
-  if (index == ROOT_INDEX_COMPUTER)
+  if (kind == ROOT_INDEX_COMPUTER)
   {
     NFsFolder::CFSFolder *fsFolder = new NFsFolder::CFSFolder;
     subFolder = fsFolder;
@@ -240,22 +285,26 @@ Z7_COM7F_IMF(CRootFolder::BindToFolder(const wchar_t *name, IFolderFolder **resu
     return S_OK;
   }
   
-  for (unsigned i = 0; i < kNumRootFolderItems; i++)
+  for (unsigned i = 0; i < _numItems; i++)
     if (AreEqualNames(name2, _names[i]))
       return BindToFolder((UInt32)i, resultFolder);
   
   #ifdef USE_WIN_PATHS
   if (AreEqualNames(name2, L"My Documents") ||
       AreEqualNames(name2, L"Documents"))
-    return BindToFolder((UInt32)ROOT_INDEX_DOCUMENTS, resultFolder);
+  {
+    const int k = FindKind(ROOT_INDEX_DOCUMENTS);
+    if (k >= 0)
+      return BindToFolder((UInt32)k, resultFolder);
+  }
   #else
   if (name2.IsEqualTo(STRING_PATH_SEPARATOR))
-    return BindToFolder((UInt32)ROOT_INDEX_COMPUTER, resultFolder);
+    return BindToFolder((UInt32)FindKind(ROOT_INDEX_COMPUTER), resultFolder);
   #endif
   
   if (AreEqualNames(name2, L"My Computer") ||
       AreEqualNames(name2, L"Computer"))
-    return BindToFolder((UInt32)ROOT_INDEX_COMPUTER, resultFolder);
+    return BindToFolder((UInt32)FindKind(ROOT_INDEX_COMPUTER), resultFolder);
   
   if (name2.IsEqualTo(STRING_PATH_SEPARATOR))
   {

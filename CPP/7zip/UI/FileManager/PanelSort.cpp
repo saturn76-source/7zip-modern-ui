@@ -185,6 +185,10 @@ int CALLBACK CompareItems(LPARAM lParam1, LPARAM lParam2, LPARAM lpData)
 
   const CPanel *panel = (CPanel*)lpData;
 
+  // top level list (Computer, Desktop, Downloads ...): fixed order, not sorted
+  if (panel->IsRootFolder())
+    return (lParam1 < lParam2) ? -1 : (lParam1 > lParam2 ? 1 : 0);
+
   const bool isDir1 = panel->IsItem_Folder((unsigned)lParam1);
   const bool isDir2 = panel->IsItem_Folder((unsigned)lParam2);
   if (isDir1 != isDir2)
