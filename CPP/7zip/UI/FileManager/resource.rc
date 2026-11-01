@@ -133,9 +133,9 @@ BEGIN
       MENUITEM "Large Buttons",             IDM_VIEW_TOOLBARS_LARGE_BUTTONS
       MENUITEM "Show Buttons Text",         IDM_VIEW_TOOLBARS_SHOW_BUTTONS_TEXT
       MY_MENUITEM_SEPARATOR
-      MENUITEM "Modern 1 Icons",            IDM_VIEW_TOOLBARS_MODERN1
+      MENUITEM "Modern 1 Icons",            IDM_VIEW_TOOLBARS_MODERN3
       MENUITEM "Modern 2 Icons",            IDM_VIEW_TOOLBARS_MODERN2
-      MENUITEM "Modern 3 Icons",            IDM_VIEW_TOOLBARS_MODERN3
+      MENUITEM "Modern 3 Icons",            IDM_VIEW_TOOLBARS_MODERN1
       MENUITEM "Classic Icons",             IDM_VIEW_TOOLBARS_CLASSIC
       MY_MENUITEM_SEPARATOR
       MENUITEM "&Customize...",             IDM_VIEW_TOOLBARS_CUSTOMIZE

@@ -820,9 +820,10 @@ void CApp::ShowToolbarContextMenu()
     // icon style: Modern 1 / Modern 2 / Classic
     const struct { unsigned Cmd; UINT MenuID; int Style; const char *Name; } kStyles[] =
     {
-      { kCmd_Modern1, IDM_VIEW_TOOLBARS_MODERN1, k_IconStyle_Modern1, "Modern 1 Icons" },
+      // shown names: "Modern 1" = Windows 11 style, "Modern 3" = 3D (WinRAR like) style
+      { kCmd_Modern3, IDM_VIEW_TOOLBARS_MODERN3, k_IconStyle_Modern3, "Modern 1 Icons" },
       { kCmd_Modern2, IDM_VIEW_TOOLBARS_MODERN2, k_IconStyle_Modern2, "Modern 2 Icons" },
-      { kCmd_Modern3, IDM_VIEW_TOOLBARS_MODERN3, k_IconStyle_Modern3, "Modern 3 Icons" },
+      { kCmd_Modern1, IDM_VIEW_TOOLBARS_MODERN1, k_IconStyle_Modern1, "Modern 3 Icons" },
       { kCmd_Classic, IDM_VIEW_TOOLBARS_CLASSIC, k_IconStyle_Classic, "Classic Icons" }
     };
     for (unsigned k = 0; k < Z7_ARRAY_SIZE(kStyles); k++)
