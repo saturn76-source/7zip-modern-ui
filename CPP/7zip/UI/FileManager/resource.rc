@@ -354,7 +354,7 @@ BEGIN
   IDS_EASY_EXTRACT_TO   "Extract to:"
   IDS_EASY_EXTRACT_OPEN "Open the extracted files folder when done"
   IDS_EASY_EXTRACT_STAR "The * stands for each archive's name"
-  IDS_EASY_EXTRACT_SELECT_ARC "One or more archive files not selected\nPlease select an archive to extract"
+  IDS_EASY_EXTRACT_SELECT_ARC "You must select one or more archive files"
 
   IDS_SPLITTING            "Splitting..."
   IDS_SPLIT_CONFIRM_TITLE  "Confirm Splitting"

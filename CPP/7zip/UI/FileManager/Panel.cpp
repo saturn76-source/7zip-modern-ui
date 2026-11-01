@@ -1600,27 +1600,9 @@ void CPanel::EasyExtract()
   }
   if (paths.IsEmpty())
   {
-    // no archive is selected: user can type archive name or use "Browse..."
-    CSelectArchiveDialog dialog;
-    dialog.FolderPrefix = GetFsPath();
-    {
-      // archives in current folder for drop-down list
-      NWindows::NFile::NFind::CEnumerator enumerator;
-      enumerator.SetDirPrefix(us2fs(dialog.FolderPrefix));
-      NWindows::NFile::NFind::CFileInfo fi;
-      while (enumerator.Next(fi) && dialog.Names.Size() < 500)
-      {
-        if (fi.IsDir())
-          continue;
-        const UString name = fs2us(fi.Name);
-        if (g_CodecsObj && g_CodecsObj->FindFormatForArchiveName(name) < 0)
-          continue;
-        dialog.Names.Add(name);
-      }
-    }
-    if (dialog.Create(GetParent()) != IDOK)
-      return;
-    paths.Add(dialog.Path);
+    // no archive is selected
+    MessageBox_Error_LangID(IDS_EASY_EXTRACT_SELECT_ARC);
+    return;
   }
   EasyExtractFiles(paths);
 }
