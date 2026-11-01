@@ -1071,7 +1071,27 @@ void CPanel::ApplyListZoom()
   // new row height / item size
   const LONG_PTR style = _listView.GetStyle();
   if ((style & LVS_TYPEMASK) == LVS_ICON)
+  {
+    /* "Large Icons" view: space for each item depends on icon size and text size.
+       Without it the names are cut and items are too close. */
+    if (zoom == k_ZoomDefault)
+      _listView.SendMsg(LVM_SETICONSPACING, 0, (LPARAM)-1); // default spacing
+    else
+    {
+      int iconW = 32, iconH = 32;
+      ImageList_GetIconSize(largeList, &iconW, &iconH);
+      int textH = 16;
+      {
+        LOGFONTW lf;
+        if (font && ::GetObjectW(font, sizeof(lf), &lf) == sizeof(lf) && lf.lfHeight != 0)
+          textH = lf.lfHeight < 0 ? -lf.lfHeight : lf.lfHeight;
+      }
+      const int cx = iconW + textH * 5;      // about 10 characters
+      const int cy = iconH + textH * 3 + 8;  // icon and 2 lines of text
+      _listView.SendMsg(LVM_SETICONSPACING, 0, MAKELPARAM(cx, cy));
+    }
     _listView.SendMsg(LVM_ARRANGE, LVA_DEFAULT, 0);
+  }
   {
     /* list view calculates height of header (column titles) only when its size is changed.
        So we change the size for a moment: header gets height for new font. */
@@ -1441,7 +1461,10 @@ void CPanel::SetListViewMode(UInt32 index)
 
   // DWORD tickCount1 = GetTickCount();
   if ((oldStyle & LVS_TYPEMASK) != (LONG_PTR)newStyle)
+  {
     _listView.SetStyle((oldStyle & ~(LONG_PTR)(DWORD)LVS_TYPEMASK) | (LONG_PTR)newStyle);
+    ApplyListZoom(); // item spacing for new view
+  }
   {
     // "Details" / "Large Icons" buttons show current view
     const HWND b1 = ::GetDlgItem(*this, kViewBtnID_Details);
