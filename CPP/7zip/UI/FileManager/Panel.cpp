@@ -1596,6 +1596,13 @@ void CPanel::EasyExtract()
         return;
       }
     }
+    if (_parentFolders.IsEmpty())
+    {
+      // not archive and not file system folder (Computer, Network, Documents list):
+      // there are no archive files here
+      MessageBox_Error_LangID(IDS_EASY_EXTRACT_SELECT_ARC);
+      return;
+    }
     // archive inside other archive: extract all items of current folder
     SelectAll(true);
     g_App.OnCopy(false, false, g_App.GetFocusedPanelIndex(), true);
