@@ -265,6 +265,11 @@
 #define IDS_EASY_EXTRACT_SELECT_ARC     7226
 
 #define IDI_EASY_EXTRACT  210
+// Easy Extract picture for "Modern 2" and "Modern 1" (Windows 11 style) toolbar icons
+#define IDI_EASY_EXTRACT2 211
+#define IDI_EASY_EXTRACT3 212
+// Easy Extract picture for "Classic" toolbar icons
+#define IDI_EASY_EXTRACT_C 213
 
 #define IDS_SPLITTING                   7303
 #define IDS_SPLIT_CONFIRM_TITLE         7304

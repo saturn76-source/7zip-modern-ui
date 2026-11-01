@@ -27,6 +27,8 @@ enum
   k_IconStyle_Modern3 = 3  // Windows 11 style
 };
 int ReadToolbarIconStyle();
+// picture in "Easy Extract" window: same picture as Easy Extract toolbar button
+UINT GetEasyExtractIconResID();
 void SaveToolbarIconStyle(int style);
 
 // must be larger than context menu IDs

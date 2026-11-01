@@ -1689,7 +1689,7 @@ void CPanel::EasyExtractFiles(const UStringVector &paths)
     LangString(IDS_EASY_EXTRACT_TO, dialog.Static);
     LangString(IDS_EASY_EXTRACT_OPEN, dialog.OpenOptionText);
     dialog.ShowOpenOption = true;
-    dialog.IconResID = IDI_EASY_EXTRACT;
+    dialog.IconResID = GetEasyExtractIconResID();
     dialog.OpenAfter = g_EasyExtract_OpenAfter;
     if (dialog.Create(GetParent()) != IDOK)
       return;

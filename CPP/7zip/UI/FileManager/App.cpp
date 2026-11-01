@@ -578,6 +578,17 @@ static bool ReadRegDword(const wchar_t *name, DWORD &value)
   return (res == ERROR_SUCCESS && type == REG_DWORD);
 }
 
+UINT GetEasyExtractIconResID()
+{
+  switch (g_App.IconStyle)
+  {
+    case k_IconStyle_Modern2: return IDI_EASY_EXTRACT2; // flat tile with wand
+    case k_IconStyle_Modern3: return IDI_EASY_EXTRACT3; // Windows 11 style: zipped folder with arrow
+    case k_IconStyle_Classic: return IDI_EASY_EXTRACT_C; // classic: blue bar and yellow star
+    default: return IDI_EASY_EXTRACT; // 3D style: 7ZIP picture
+  }
+}
+
 int ReadToolbarIconStyle()
 {
   DWORD value = 0;
@@ -1713,7 +1724,7 @@ void CApp::OnCopy(bool move, bool copyToSame, unsigned srcPanelIndex, bool easyE
       LangString(IDS_EASY_EXTRACT_TO, copyDialog.Static);
       LangString(IDS_EASY_EXTRACT_OPEN, copyDialog.OpenOptionText);
       copyDialog.ShowOpenOption = true;
-      copyDialog.IconResID = IDI_EASY_EXTRACT;
+      copyDialog.IconResID = GetEasyExtractIconResID();
       copyDialog.OpenAfter = g_EasyExtract_OpenAfter;
     }
 

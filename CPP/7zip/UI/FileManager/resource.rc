@@ -227,6 +227,9 @@ IDI_ISO_FILE  ICON  "../../UI/FileManager/IsoFile.ico"
 35  ICON  "../../UI/FileManager/TypeIcons/squashfs.ico"
 36  ICON  "../../UI/FileManager/TypeIcons/apfs.ico"
 IDI_EASY_EXTRACT  ICON  "../../UI/FileManager/EasyExtract.ico"
+IDI_EASY_EXTRACT2 ICON  "../../UI/FileManager/EasyExtract2.ico"
+IDI_EASY_EXTRACT3 ICON  "../../UI/FileManager/EasyExtract3.ico"
+IDI_EASY_EXTRACT_C ICON  "../../UI/FileManager/EasyExtractC.ico"
 
 #ifndef UNDER_CE
 1  24  MOVEABLE PURE   "../../UI/FileManager/7zFM.exe.manifest"
