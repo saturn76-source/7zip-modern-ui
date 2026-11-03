@@ -212,7 +212,7 @@ static HBITMAP LoadAlphaBitmap(UINT resID)
       IMAGE_BITMAP, 0, 0, LR_CREATEDIBSECTION);
 }
 
-// stored sizes of toolbar icons ("Modern 1", "Modern 2", "Modern 3").
+// stored sizes of toolbar icons ("Modern 1" ... "Modern 4").
 // Other sizes (20, 40, 72) are made by scaling down the next bigger stored size:
 // it keeps the exe file smaller.
 static const unsigned k_StripSizes[] = { 16, 24, 32, 48, 64, 96 };
@@ -222,10 +222,13 @@ static UINT GetStripResID(int iconStyle, unsigned index)
   static const UINT kIDs1[] = { IDB_TB16, IDB_TB24, IDB_TB32, IDB_TB48, IDB_TB64, IDB_TB96 };
   static const UINT kIDs2[] = { IDB_TB2_16, IDB_TB2_24, IDB_TB2_32, IDB_TB2_48, IDB_TB2_64, IDB_TB2_96 };
   static const UINT kIDs3[] = { IDB_TB3_16, IDB_TB3_24, IDB_TB3_32, IDB_TB3_48, IDB_TB3_64, IDB_TB3_96 };
+  static const UINT kIDs4[] = { IDB_TB4_16, IDB_TB4_24, IDB_TB4_32, IDB_TB4_48, IDB_TB4_64, IDB_TB4_96 };
   if (iconStyle == k_IconStyle_Modern2)
     return kIDs2[index];
   if (iconStyle == k_IconStyle_Modern3)
     return kIDs3[index];
+  if (iconStyle == k_IconStyle_Modern4)
+    return kIDs4[index];
   return kIDs1[index];
 }
 
@@ -490,7 +493,7 @@ static const CButtonInfo g_Buttons[] =
   { IDM_FIND_FILES,             5, IDS_BUTTON_FIND,    true, false, true  },
   { IDM_EASY_EXTRACT,           6, IDS_BUTTON_WIZARD,  true, false, true  },
   { IDM_PROPERTIES,             7, IDS_BUTTON_INFO,    true, false, true  },
-  { IDM_COMMENT,                8, IDS_BUTTON_COMMENT, true, true,  true  },
+  { IDM_COMMENT,                8, IDS_BUTTON_COMMENT, true, true,  false },
   // new buttons must be added only at the end of table (saved layouts use indexes)
   { IDM_COPY_TO,                9, IDS_BUTTON_COPY,    true, false, false },
   { IDM_MOVE_TO,               10, IDS_BUTTON_MOVE,    true, false, false }
@@ -498,7 +501,8 @@ static const CButtonInfo g_Buttons[] =
 
 static const int kLayout_Separator = -1;
 
-// default layout: all buttons, separator before "Comment"
+// default layout: Add, Extract, Test, View, Delete, Find, Easy Extract, Info
+// (buttons with InDefault; separator only if SeparatorBefore button is in default)
 static void GetDefaultToolbarLayout(CRecordVector<int> &layout)
 {
   layout.Clear();
@@ -584,6 +588,7 @@ UINT GetEasyExtractIconResID()
   {
     case k_IconStyle_Modern2: return IDI_EASY_EXTRACT2; // flat tile with wand
     case k_IconStyle_Modern3: return IDI_EASY_EXTRACT3; // Windows 11 style: zipped folder with arrow
+    case k_IconStyle_Modern4: return IDI_EASY_EXTRACT4; // Windows XP style: zipped folder with green ball
     case k_IconStyle_Classic: return IDI_EASY_EXTRACT_C; // classic: blue bar and yellow star
     default: return IDI_EASY_EXTRACT; // 3D style: 7ZIP picture
   }
@@ -594,14 +599,15 @@ int ReadToolbarIconStyle()
   DWORD value = 0;
   if (ReadRegDword(k_Reg_ToolbarIconStyle, value))
   {
-    if (value <= (DWORD)k_IconStyle_Modern3)
+    if (value <= (DWORD)k_IconStyle_Modern4)
       return (int)value;
-    return k_IconStyle_Modern1;
+    return k_IconStyle_Modern3;
   }
   // old option "Classic Icons"
   if (ReadRegDword(k_Reg_ToolbarClassic, value) && value != 0)
     return k_IconStyle_Classic;
-  return k_IconStyle_Modern1;
+  // default: menu "Modern 1" (Windows 11 style)
+  return k_IconStyle_Modern3;
 }
 
 void SaveToolbarIconStyle(int style)
@@ -810,6 +816,7 @@ void CApp::ShowToolbarContextMenu()
   const unsigned kCmd_Modern1 = 105;
   const unsigned kCmd_Modern2 = 106;
   const unsigned kCmd_Modern3 = 107;
+  const unsigned kCmd_Modern4 = 108;
 
   HMENU menu = ::CreatePopupMenu();
   if (!menu)
@@ -828,13 +835,15 @@ void CApp::ShowToolbarContextMenu()
   }
   ::AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
   {
-    // icon style: Modern 1 / Modern 2 / Classic
+    // icon style: Modern 1 ... Modern 4 / Classic
     const struct { unsigned Cmd; UINT MenuID; int Style; const char *Name; } kStyles[] =
     {
-      // shown names: "Modern 1" = Windows 11 style, "Modern 3" = 3D (WinRAR like) style
+      // shown names: "Modern 1" = Windows 11 style, "Modern 3" = 3D (WinRAR like) style,
+      // "Modern 4" = Windows XP style
       { kCmd_Modern3, IDM_VIEW_TOOLBARS_MODERN3, k_IconStyle_Modern3, "Modern 1 Icons" },
       { kCmd_Modern2, IDM_VIEW_TOOLBARS_MODERN2, k_IconStyle_Modern2, "Modern 2 Icons" },
       { kCmd_Modern1, IDM_VIEW_TOOLBARS_MODERN1, k_IconStyle_Modern1, "Modern 3 Icons" },
+      { kCmd_Modern4, IDM_VIEW_TOOLBARS_MODERN4, k_IconStyle_Modern4, "Modern 4 Icons" },
       { kCmd_Classic, IDM_VIEW_TOOLBARS_CLASSIC, k_IconStyle_Classic, "Classic Icons" }
     };
     for (unsigned k = 0; k < Z7_ARRAY_SIZE(kStyles); k++)
@@ -880,6 +889,8 @@ void CApp::ShowToolbarContextMenu()
     ::PostMessage(_window, WM_COMMAND, IDM_VIEW_TOOLBARS_MODERN2, 0);
   else if (cmd == kCmd_Modern3)
     ::PostMessage(_window, WM_COMMAND, IDM_VIEW_TOOLBARS_MODERN3, 0);
+  else if (cmd == kCmd_Modern4)
+    ::PostMessage(_window, WM_COMMAND, IDM_VIEW_TOOLBARS_MODERN4, 0);
   else if (cmd == kCmd_Reset)
   {
     CRecordVector<int> layout;

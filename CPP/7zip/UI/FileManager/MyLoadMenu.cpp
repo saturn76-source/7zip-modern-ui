@@ -437,6 +437,7 @@ void OnMenuActivating(HWND /* hWnd */, HMENU hMenu, int position)
     menu.CheckItemByID(IDM_VIEW_TOOLBARS_MODERN1, g_App.IconStyle == k_IconStyle_Modern1);
     menu.CheckItemByID(IDM_VIEW_TOOLBARS_MODERN2, g_App.IconStyle == k_IconStyle_Modern2);
     menu.CheckItemByID(IDM_VIEW_TOOLBARS_MODERN3, g_App.IconStyle == k_IconStyle_Modern3);
+    menu.CheckItemByID(IDM_VIEW_TOOLBARS_MODERN4, g_App.IconStyle == k_IconStyle_Modern4);
     menu.CheckItemByID(IDM_VIEW_SIZE_KB, GetListSizeInKB());
     menu.CheckItemByID(IDM_VIEW_TOOLBARS_CLASSIC, g_App.IconStyle == k_IconStyle_Classic);
     {
@@ -928,6 +929,7 @@ bool OnMenuCommand(HWND hWnd, unsigned id)
     case IDM_VIEW_TOOLBARS_MODERN1:           g_App.SetIconStyle(k_IconStyle_Modern1); break;
     case IDM_VIEW_TOOLBARS_MODERN2:           g_App.SetIconStyle(k_IconStyle_Modern2); break;
     case IDM_VIEW_TOOLBARS_MODERN3:           g_App.SetIconStyle(k_IconStyle_Modern3); break;
+    case IDM_VIEW_TOOLBARS_MODERN4:           g_App.SetIconStyle(k_IconStyle_Modern4); break;
     case IDM_VIEW_TOOLBARS_CLASSIC:           g_App.SetIconStyle(k_IconStyle_Classic); break;
     case IDM_VIEW_ZOOM_IN:    g_App.ZoomList(1); break;
     case IDM_VIEW_ZOOM_OUT:   g_App.ZoomList(-1); break;

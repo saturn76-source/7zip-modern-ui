@@ -24,7 +24,8 @@ enum
   k_IconStyle_Modern1 = 0, // 3D icons (WinRAR like)
   k_IconStyle_Modern2 = 1, // flat color tiles
   k_IconStyle_Classic = 2, // original 7-Zip icons
-  k_IconStyle_Modern3 = 3  // Windows 11 style
+  k_IconStyle_Modern3 = 3, // Windows 11 style
+  k_IconStyle_Modern4 = 4  // Windows XP style
 };
 int ReadToolbarIconStyle();
 // picture in "Easy Extract" window: same picture as Easy Extract toolbar button
@@ -119,7 +120,7 @@ public:
     _numHiddenToolbarCmds = 0;
     _chevronFont = NULL;
     _toolbarAdjusting = false;
-    IconStyle = k_IconStyle_Modern1;
+    IconStyle = k_IconStyle_Modern3;
     SetPanels_AutoRefresh_Mode();
   }
 

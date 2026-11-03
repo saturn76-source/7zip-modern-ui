@@ -133,7 +133,7 @@ void CFmSettings::Save() const
 
 void CFmSettings::Load()
 {
-  ShowDots = true; // ".." (up one level) item in file list: on by default
+  ShowDots = false; // ".." (up one level) item in file list: off by default
   ShowRealFileIcons = false;
   /* if (FullRow == false), we can use mouse click on another columns
      to select group of files. We need to implement additional

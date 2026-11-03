@@ -136,6 +136,7 @@ BEGIN
       MENUITEM "Modern 1 Icons",            IDM_VIEW_TOOLBARS_MODERN3
       MENUITEM "Modern 2 Icons",            IDM_VIEW_TOOLBARS_MODERN2
       MENUITEM "Modern 3 Icons",            IDM_VIEW_TOOLBARS_MODERN1
+      MENUITEM "Modern 4 Icons",            IDM_VIEW_TOOLBARS_MODERN4
       MENUITEM "Classic Icons",             IDM_VIEW_TOOLBARS_CLASSIC
       MY_MENUITEM_SEPARATOR
       MENUITEM "&Customize...",             IDM_VIEW_TOOLBARS_CUSTOMIZE
@@ -230,6 +231,7 @@ IDI_EASY_EXTRACT  ICON  "../../UI/FileManager/EasyExtract.ico"
 IDI_EASY_EXTRACT2 ICON  "../../UI/FileManager/EasyExtract2.ico"
 IDI_EASY_EXTRACT3 ICON  "../../UI/FileManager/EasyExtract3.ico"
 IDI_EASY_EXTRACT_C ICON  "../../UI/FileManager/EasyExtractC.ico"
+IDI_EASY_EXTRACT4 ICON  "../../UI/FileManager/EasyExtract4.ico"
 
 #ifndef UNDER_CE
 1  24  MOVEABLE PURE   "../../UI/FileManager/7zFM.exe.manifest"
@@ -264,6 +266,12 @@ IDB_TB3_32     BITMAP  "../../UI/FileManager/tb3_32.bmp"
 IDB_TB3_48     BITMAP  "../../UI/FileManager/tb3_48.bmp"
 IDB_TB3_64     BITMAP  "../../UI/FileManager/tb3_64.bmp"
 IDB_TB3_96     BITMAP  "../../UI/FileManager/tb3_96.bmp"
+IDB_TB4_16     BITMAP  "../../UI/FileManager/tb4_16.bmp"
+IDB_TB4_24     BITMAP  "../../UI/FileManager/tb4_24.bmp"
+IDB_TB4_32     BITMAP  "../../UI/FileManager/tb4_32.bmp"
+IDB_TB4_48     BITMAP  "../../UI/FileManager/tb4_48.bmp"
+IDB_TB4_64     BITMAP  "../../UI/FileManager/tb4_64.bmp"
+IDB_TB4_96     BITMAP  "../../UI/FileManager/tb4_96.bmp"
 
 
 STRINGTABLE

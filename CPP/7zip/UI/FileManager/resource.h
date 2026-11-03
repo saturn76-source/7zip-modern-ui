@@ -61,6 +61,13 @@
 #define IDB_TB3_48   335
 #define IDB_TB3_64   336
 #define IDB_TB3_96   338
+// "Modern 4" toolbar icons (Windows XP style)
+#define IDB_TB4_16   340
+#define IDB_TB4_24   342
+#define IDB_TB4_32   343
+#define IDB_TB4_48   345
+#define IDB_TB4_64   346
+#define IDB_TB4_96   348
 
 
 #define IDM_HASH_ALL             101
@@ -117,6 +124,7 @@
 #define IDM_VIEW_TOOLBARS_MODERN2   564
 #define IDM_VIEW_TOOLBARS_MODERN3   565
 #define IDM_VIEW_SIZE_KB            566
+#define IDM_VIEW_TOOLBARS_MODERN4   567
 
 #define IDM_VER_EDIT             580
 #define IDM_VER_COMMIT           581
@@ -270,6 +278,8 @@
 #define IDI_EASY_EXTRACT3 212
 // Easy Extract picture for "Classic" toolbar icons
 #define IDI_EASY_EXTRACT_C 213
+// Easy Extract picture for "Modern 4" (Windows XP style) toolbar icons
+#define IDI_EASY_EXTRACT4 214
 
 #define IDS_SPLITTING                   7303
 #define IDS_SPLIT_CONFIRM_TITLE         7304

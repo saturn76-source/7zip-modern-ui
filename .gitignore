@@ -1,0 +1,5 @@
+# build output
+CPP/7zip/Bundles/Fm/x64/
+installer/*.exe
+*.aps
+*.user
