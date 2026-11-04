@@ -1,5 +1,7 @@
 # 7-Zip Modern UI edition
 
+![7-Zip Modern UI edition main window](screenshots/main-window.png)
+
 A modified **7-Zip 26.05 File Manager** (`7zFM.exe`, Windows x64) with a new, modern user interface.
 Only the user interface was changed. Compression and extraction code is the original 7-Zip code.
 
