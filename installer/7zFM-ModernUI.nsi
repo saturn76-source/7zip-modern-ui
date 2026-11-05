@@ -68,6 +68,8 @@ Section "${APP_NAME} (required)" SecMain
   File "${SRC}\DOC\readme.txt"
   File "${SRC}\DOC\copying.txt"
   File "${SRC}\DOC\unRarLicense.txt"
+  ; help file for Help > Contents (F1), taken from original 7-Zip 26.05 installer
+  File "7-zip.chm"
 
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 
@@ -108,6 +110,7 @@ Section "Uninstall"
   Delete "$INSTDIR\readme.txt"
   Delete "$INSTDIR\copying.txt"
   Delete "$INSTDIR\unRarLicense.txt"
+  Delete "$INSTDIR\7-zip.chm"
   Delete "$INSTDIR\Uninstall.exe"
   RMDir "$INSTDIR"
   DeleteRegKey HKLM "${UNINST_KEY}"
