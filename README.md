@@ -7,9 +7,18 @@ Only the user interface was changed. Compression and extraction code is the orig
 
 ![What's new in 7-Zip Modern UI edition](screenshots/whats-new.png)
 
-## Toolbar icons: before and after
+## Toolbar styles
 
-![Toolbar icons: original 7-Zip and the 5 new icon styles](screenshots/icons-before-after.png)
+Real screenshots of the original 7-Zip and the 5 toolbar styles. Change the style in **View > Toolbars**, or right-click the toolbar.
+
+![Toolbar styles: original 7-Zip, Modern 1-4 and Classic](screenshots/toolbars.png)
+
+<details>
+<summary>Dark color theme</summary>
+
+![Toolbar styles in the dark color theme](screenshots/toolbars-dark.png)
+
+</details>
 
 ## Features
 
