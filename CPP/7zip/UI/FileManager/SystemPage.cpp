@@ -73,8 +73,17 @@ int CSystemPage::AddIcon(const UString &iconPath, int iconIndex)
   path.ReleaseBuf_CalcLen(size);
   if (needLen == 0 || needLen >= size)
     path = iconPath;
-  const UINT num = ExtractIconExW(path, iconIndex, NULL, &hicon, 1);
-  if (num != 1 || !hicon)
+  // icon of the needed size (so it is not stretched from 16x16)
+  hicon = NULL;
+  if (::SHDefExtractIconW(path, iconIndex, 0, &hicon, NULL, (UINT)_iconSize) != S_OK)
+    hicon = NULL;
+  if (!hicon)
+  {
+    const UINT num = ExtractIconExW(path, iconIndex, NULL, &hicon, 1);
+    if (num != 1)
+      hicon = NULL;
+  }
+  if (!hicon)
   #endif
     return -1;
   
@@ -166,12 +175,22 @@ bool CSystemPage::OnInit()
   DWORD newFlags = LVS_EX_FULLROWSELECT;
   _listView.SetExtendedListViewStyle(newFlags, newFlags);
 
+  // Modern UI: fixed sizes (they depend only on Windows DPI scaling):
+  // icons are 2 times bigger than small system icons, so file type pictures are easy to see.
+  {
+    int smallIcon = ::GetSystemMetrics(SM_CXSMICON);
+    if (smallIcon < 16)
+      smallIcon = 16;
+    _iconSize = smallIcon * 2;
+    _scale = ::MulDiv(smallIcon, 100, 16);
+  }
+
   _numIcons = 0;
-  _imageList.Create(16, 16, ILC_MASK | ILC_COLOR32, 0, 0);
+  _imageList.Create(_iconSize, _iconSize, ILC_MASK | ILC_COLOR32, 0, 0);
 
   _listView.SetImageList(_imageList, LVSIL_SMALL);
 
-  _listView.InsertColumn(0, LangString(IDS_PROP_FILE_TYPE), 80);
+  _listView.InsertColumn(0, LangString(IDS_PROP_FILE_TYPE), ::MulDiv(80, _scale, 100));
 
   UString s;
 
@@ -206,7 +225,16 @@ bool CSystemPage::OnInit()
 
   LV_COLUMNW ci;
   ci.mask = LVCF_TEXT | LVCF_FMT | LVCF_WIDTH | LVCF_SUBITEM;
-  ci.cx = 152;
+  {
+    // User and All users columns share the free width of the list (no horizontal scroll bar)
+    RECT rc;
+    int width = 0;
+    if (::GetClientRect(_listView, &rc))
+      width = (int)(rc.right - rc.left) - ::MulDiv(80, _scale, 100) - ::GetSystemMetrics(SM_CXVSCROLL) - 4;
+    width /= NUM_EXT_GROUPS;
+    const int minWidth = ::MulDiv(100, _scale, 100);
+    ci.cx = width < minWidth ? minWidth : width;
+  }
   ci.fmt = LVCFMT_CENTER;
   ci.pszText = s.Ptr_non_const();
   ci.iSubItem = 1;
@@ -220,6 +248,29 @@ bool CSystemPage::OnInit()
     _listView.InsertColumn(2, &ci);
   }
   #endif
+
+  {
+    // "+" buttons: centered above their columns
+    RECT listRect;
+    if (::GetWindowRect(_listView, &listRect))
+    {
+      ::MapWindowPoints(NULL, *this, (POINT *)(void *)&listRect, 2);
+      int x = (int)listRect.left + 2 + ::MulDiv(80, _scale, 100);
+      for (unsigned g = 0; g < NUM_EXT_GROUPS; g++)
+      {
+        const HWND button = GetItem(g == 0 ? IDB_SYSTEM_CURRENT : IDB_SYSTEM_ALL);
+        RECT br;
+        if (button && ::GetWindowRect(button, &br))
+        {
+          ::MapWindowPoints(NULL, *this, (POINT *)(void *)&br, 2);
+          const int bw = (int)(br.right - br.left);
+          ::SetWindowPos(button, NULL, x + (ci.cx - bw) / 2, (int)br.top, 0, 0,
+              SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+        }
+        x += ci.cx;
+      }
+    }
+  }
 
   _extDB.Read();
   _items.Clear();

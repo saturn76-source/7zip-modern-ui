@@ -581,6 +581,64 @@ static void ErrorMessage(const char *s)
 #define NT_CHECK_FAIL_ACTION ErrorMessage("Unsupported Windows version"); return 1;
 #endif
 
+#ifdef _WIN32
+/* Modern UI edition keeps its settings in HKCU\Software\7-Zip Modern UI,
+   so it does not share them with original 7-Zip.
+   On the first start we copy the old settings from HKCU\Software\7-Zip. */
+static void CopyOldSettings_OneTime()
+{
+  HKEY newKey;
+  if (::RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\7-Zip Modern UI", 0, KEY_READ, &newKey) == ERROR_SUCCESS)
+  {
+    ::RegCloseKey(newKey);
+    return;
+  }
+  HKEY oldKey;
+  if (::RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\7-Zip", 0, KEY_READ, &oldKey) != ERROR_SUCCESS)
+    return;
+  if (::RegCreateKeyExW(HKEY_CURRENT_USER, L"Software\\7-Zip Modern UI", 0, NULL, 0,
+      KEY_ALL_ACCESS, NULL, &newKey, NULL) == ERROR_SUCCESS)
+  {
+    typedef LONG (WINAPI *Func_RegCopyTreeW)(HKEY, LPCWSTR, HKEY);
+    const HMODULE hmod = ::GetModuleHandleW(L"advapi32.dll");
+    const Func_RegCopyTreeW f = hmod ? Z7_GET_PROC_ADDRESS(
+        Func_RegCopyTreeW, hmod, "RegCopyTreeW") : NULL;
+    if (f)
+      f(oldKey, NULL, newKey);
+    ::RegCloseKey(newKey);
+  }
+  ::RegCloseKey(oldKey);
+}
+
+/* Options / System / "Reset settings...":
+   after the main window is closed (it saves its settings on close), we clear
+   HKCU\Software\7-Zip Modern UI and start 7-Zip again. The empty key stays,
+   so CopyOldSettings_OneTime() does not copy the settings of original 7-Zip again. */
+bool g_ResetSettingsOnExit = false;
+
+static void ResetSettings_and_Restart()
+{
+  typedef LONG (WINAPI *Func_RegDeleteTreeW)(HKEY, LPCWSTR);
+  const HMODULE hmod = ::GetModuleHandleW(L"advapi32.dll");
+  const Func_RegDeleteTreeW f = hmod ? Z7_GET_PROC_ADDRESS(
+      Func_RegDeleteTreeW, hmod, "RegDeleteTreeW") : NULL;
+  HKEY key;
+  if (f && ::RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\7-Zip Modern UI", 0,
+      KEY_ALL_ACCESS, &key) == ERROR_SUCCESS)
+  {
+    f(key, NULL); // deletes all values and subkeys, the key itself stays
+    ::RegCloseKey(key);
+  }
+  WCHAR path[MAX_PATH + 1];
+  const DWORD len = ::GetModuleFileNameW(NULL, path, MAX_PATH);
+  if (len != 0 && len < MAX_PATH)
+  {
+    path[len] = 0;
+    ::ShellExecuteW(NULL, NULL, path, NULL, NULL, SW_SHOWNORMAL);
+  }
+}
+#endif
+
 static int WINAPI WinMain2(int nCmdShow)
 {
   g_RAM_Size_Defined = NSystem::GetRamSize(g_RAM_Size);
@@ -789,6 +847,10 @@ static int WINAPI WinMain2(int nCmdShow)
   #ifndef UNDER_CE
   OleUninitialize();
   #endif
+  #ifdef _WIN32
+  if (g_ResetSettingsOnExit)
+    ResetSettings_and_Restart();
+  #endif
   return (int)msg.wParam;
 }
 
@@ -808,6 +870,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE /* hPrevInstance */,
     {
       #ifdef _WIN32
       My_SetDefaultDllDirectories();
+      CopyOldSettings_OneTime();
       #endif
       return WinMain2(nCmdShow);
     }

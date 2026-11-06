@@ -14,6 +14,11 @@ if not exist "%~dp0CPP\7zip\Bundles\Fm\x64\7zFM.exe" (
   pause
   exit /b 1
 )
+if not exist "%~dp0CPP\7zip\UI\Explorer\x64\7-zip.dll" (
+  echo 7-zip.dll not found. Run build_context_menu.cmd first.
+  pause
+  exit /b 1
+)
 cd /d "%~dp0installer"
 "%MAKENSIS%" /V2 7zFM-ModernUI.nsi
 if errorlevel 1 (
@@ -22,5 +27,5 @@ if errorlevel 1 (
   exit /b 1
 )
 echo.
-echo OK: %CD%\7zFM-ModernUI-1.0-x64-setup.exe
+for %%f in ("%CD%\7zFM-ModernUI-*-x64-setup.exe") do echo OK: %%~ff
 pause

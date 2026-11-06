@@ -126,7 +126,7 @@ static void AllowDark(HWND hwnd, bool allow)
 
 // ---------- mode ----------
 
-static const wchar_t * const k_RegKey_FM = L"Software\\7-Zip\\FM";
+static const wchar_t * const k_RegKey_FM = L"Software\\7-Zip Modern UI\\FM";
 static const wchar_t * const k_RegValue_Theme = L"Theme";
 
 static bool ReadDword(HKEY root, LPCWSTR keyName, LPCWSTR valueName, DWORD &value)

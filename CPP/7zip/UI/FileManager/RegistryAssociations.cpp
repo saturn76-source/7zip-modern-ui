@@ -24,7 +24,7 @@ static const TCHAR * const kDefaultIconKeyName = TEXT("DefaultIcon");
 static const TCHAR * const kShellKeyName = TEXT("shell");
 static const TCHAR * const kOpenKeyName = TEXT("open");
 static const TCHAR * const kCommandKeyName = TEXT("command");
-static const char * const k7zipPrefix = "7-Zip.";
+static const char * const k7zipPrefix = "7-Zip-ModernUI.";
 
 static CSysString GetExtProgramKeyName(const CSysString &ext)
 {
@@ -126,7 +126,7 @@ LONG AddShellExtensionInfo(HKEY hkey,
     extKey.SetValue(NULL, programKeyName);
     {
       // Windows "Open with" list shows this ProgId, so when the user picks 7-Zip there,
-      // Windows uses "7-Zip.ext" (with its own file type icon) instead of "Applications\7zFM.exe".
+      // Windows uses "7-Zip-ModernUI.ext" (with its own file type icon) instead of "Applications\7zFM.exe".
       CKey openWithKey;
       if (openWithKey.Create(extKey, TEXT("OpenWithProgids")) == ERROR_SUCCESS)
         openWithKey.SetValue(programKeyName, TEXT(""));

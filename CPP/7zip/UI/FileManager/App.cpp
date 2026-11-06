@@ -478,7 +478,7 @@ struct CButtonInfo
 /*
   All buttons that can be in toolbar.
   User selects buttons and their order in "Customize Toolbar" dialog.
-  The layout is saved in registry: HKCU\Software\7-Zip\FM : ToolbarLayout
+  The layout is saved in registry: HKCU\Software\7-Zip Modern UI\FM : ToolbarLayout
   as list of indexes in this table, '-' is separator. For example: "0,1,2,-,8"
   CommandID: any command from main menu (IDM_* in resource.h) or kMenuCmdID_Toolbar_*
 */
@@ -516,7 +516,7 @@ static void GetDefaultToolbarLayout(CRecordVector<int> &layout)
   }
 }
 
-static const wchar_t * const k_Reg_FM = L"Software\\7-Zip\\FM";
+static const wchar_t * const k_Reg_FM = L"Software\\7-Zip Modern UI\\FM";
 static const wchar_t * const k_Reg_ToolbarLayout = L"ToolbarLayout";
 
 // returns false, if there is no saved layout

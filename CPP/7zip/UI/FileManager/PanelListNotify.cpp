@@ -95,7 +95,7 @@ bool GetListSizeInKB()
   {
     g_SizeInKB = 1;
     HKEY key;
-    if (::RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\7-Zip\\FM", 0, KEY_READ, &key) == ERROR_SUCCESS)
+    if (::RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\7-Zip Modern UI\\FM", 0, KEY_READ, &key) == ERROR_SUCCESS)
     {
       DWORD value = 0;
       DWORD type = 0;
@@ -113,7 +113,7 @@ void SetListSizeInKB(bool inKB)
 {
   g_SizeInKB = inKB ? 1 : 0;
   HKEY key;
-  if (::RegCreateKeyExW(HKEY_CURRENT_USER, L"Software\\7-Zip\\FM", 0, NULL, 0, KEY_WRITE, NULL, &key, NULL) == ERROR_SUCCESS)
+  if (::RegCreateKeyExW(HKEY_CURRENT_USER, L"Software\\7-Zip Modern UI\\FM", 0, NULL, 0, KEY_WRITE, NULL, &key, NULL) == ERROR_SUCCESS)
   {
     const DWORD value = inKB ? 1 : 0;
     ::RegSetValueExW(key, L"SizeInKB", 0, REG_DWORD, (const BYTE *)&value, sizeof(value));

@@ -16,6 +16,7 @@
 #define IDE_SETTINGS_MEM_SPIN_EDIT 101
 #define IDC_SETTINGS_MEM_SPIN      102
 #define IDT_SETTINGS_MEM_GB        103
+#define IDB_SETTINGS_RESET_ALL     104
 
 // #define IDT_SETTINGS_MEM     100
 // #define IDC_SETTINGS_MEM     101

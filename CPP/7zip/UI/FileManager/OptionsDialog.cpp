@@ -28,6 +28,8 @@
 
 using namespace NWindows;
 
+extern bool g_ResetSettingsOnExit; // FM.cpp
+
 void OptionsDialog(HWND hwndOwner, HINSTANCE hInstance);
 void OptionsDialog(HWND hwndOwner, HINSTANCE /* hInstance */)
 {
@@ -62,7 +64,15 @@ void OptionsDialog(HWND hwndOwner, HINSTANCE /* hInstance */)
   }
 
   const INT_PTR res = NControl::MyPropertySheet(pages, hwndOwner, LangString(IDS_OPTIONS));
-  
+
+  if (g_ResetSettingsOnExit)
+  {
+    // System page: "Reset settings..." was confirmed: close the main window,
+    // FM.cpp clears the settings and starts 7-Zip again.
+    ::PostMessageW(hwndOwner, WM_CLOSE, 0, 0);
+    return;
+  }
+
   if (res != -1 && res != 0)
   {
     if (langPage.LangWasChanged)

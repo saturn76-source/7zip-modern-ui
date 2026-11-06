@@ -28,6 +28,7 @@ static const UInt32 kLangIDs[] =
 extern HINSTANCE g_hInstance;
 
 #define kHomePageURL TEXT("https://www.7-zip.org/")
+#define kGitHubURL TEXT("https://github.com/saturn76-source/7zip-modern-ui")
 #define kHelpTopic "start.htm"
 
 #define LLL_(quote) L##quote
@@ -343,7 +344,8 @@ bool CAboutDialog::OnInit()
   #endif
   SetItemText(IDT_ABOUT_VERSION, UString("7-Zip " MY_VERSION_CPU));
   SetItemText(IDT_ABOUT_DATE, LLL(MY_DATE));
-  
+  SetItemText(IDT_ABOUT_EDITION, UString("7-Zip Modern UI edition v1.01, based on 7-Zip " MY_VERSION " source code"));
+
   if (InitLogo())
   {
     _startTime = ::GetTickCount();
@@ -366,6 +368,7 @@ bool CAboutDialog::OnButtonClicked(unsigned buttonID, HWND buttonHWND)
   switch (buttonID)
   {
     case IDB_ABOUT_HOMEPAGE: url = kHomePageURL; break;
+    case IDB_ABOUT_GITHUB: url = kGitHubURL; break;
     case IDC_ABOUT_LOGO:
       // click on logo: spin it again
       if (_iconBits && ::GetTickCount() - _spinTime > kSpinTime)

@@ -26,6 +26,8 @@
 
 using namespace NWindows;
 
+extern bool g_ResetSettingsOnExit; // FM.cpp
+
 #ifdef Z7_LANG
 static const UInt32 kLangIDs[] =
 {
@@ -442,6 +444,25 @@ bool CSettingsPage::OnButtonClicked(unsigned buttonID, HWND buttonHWND)
       _memx_wasChanged = true;
       EnableSpin(IsButtonCheckedBool(IDX_SETTINGS_MEM_SET));
       break;
+    }
+
+    case IDB_SETTINGS_RESET_ALL:
+    {
+      // Modern UI: reset all settings in HKCU\Software\7-Zip Modern UI.
+      // The key is cleared after the main window is closed (FM.cpp), then 7-Zip starts again.
+      if (MessageBoxW(*this,
+          L"Reset all 7-Zip Modern UI settings to default values?\n\n"
+          L"Toolbar, icon style, color theme, zoom, columns, folders, language\n"
+          L"and compression / extraction options will be reset.\n"
+          L"File associations and the Explorer context menu are not changed.\n\n"
+          L"7-Zip will close and start again.",
+          L"Reset all settings", MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2) == IDYES)
+      {
+        g_ResetSettingsOnExit = true;
+        // close Options without saving changes of the pages
+        ::PostMessageW(::GetParent(*this), PSM_PRESSBUTTON, PSBTN_CANCEL, 0);
+      }
+      return true;
     }
 
     default:

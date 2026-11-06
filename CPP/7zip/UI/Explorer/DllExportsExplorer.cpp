@@ -40,17 +40,17 @@
 
 #include "ContextMenu.h"
 
-static LPCTSTR const k_ShellExtName = TEXT("7-Zip Shell Extension");
+static LPCTSTR const k_ShellExtName = TEXT("7-Zip Modern UI Shell Extension");
 static LPCTSTR const k_Approved = TEXT("Software\\Microsoft\\Windows\\CurrentVersion\\Shell Extensions\\Approved");
 
-// {23170F69-40C1-278A-1000-000100020000}
-static LPCTSTR const k_Clsid = TEXT("{23170F69-40C1-278A-1000-000100020000}");
+// Modern UI edition uses its own CLSID, so it does not replace
+// the shell extension of original 7-Zip ({23170F69-40C1-278A-1000-000100020000}).
+// {EE1D8B6E-4E13-46F0-A8CB-AD5F6BE235A6}
+static LPCTSTR const k_Clsid = TEXT("{EE1D8B6E-4E13-46F0-A8CB-AD5F6BE235A6}");
 
 Z7_DEFINE_GUID(CLSID_CZipContextMenu,
-    k_7zip_GUID_Data1,
-    k_7zip_GUID_Data2,
-    k_7zip_GUID_Data3_Common,
-    0x10, 0x00, 0x00, 0x01, 0x00, 0x02, 0x00, 0x00);
+    0xEE1D8B6E, 0x4E13, 0x46F0,
+    0xA8, 0xCB, 0xAD, 0x5F, 0x6B, 0xE2, 0x35, 0xA6);
 
 using namespace NWindows;
 

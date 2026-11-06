@@ -2,8 +2,14 @@
 #include "../../GuiCommon.rc"
 #include "../../MyVersion.h"
 
-#define xc 160
-#define yc 158
+#define xc 224
+#define yc 180
+
+// "Source code" group box with the original 7-Zip info
+#define gy 96
+#define gys 70
+#define gx (m + 8)
+#define gxs (xc - 24 - bxs)
 
 #define y 93
 
@@ -14,15 +20,18 @@ IDI_LOGO ICON "../../UI/FileManager/7zipLogo.ico"
 #endif
 
 IDD_ABOUT DIALOG 0, 0, xs, ys  MY_MODAL_DIALOG_STYLE  MY_FONT
-CAPTION "About 7-Zip"
+CAPTION "About 7-Zip Modern UI edition"
 {
   DEFPUSHBUTTON  "OK", IDOK, bx1, by, bxs, bys
-  PUSHBUTTON  "www.7-zip.org", IDB_ABOUT_HOMEPAGE, bx2, by, bxs, bys
+  PUSHBUTTON  "GitHub", IDB_ABOUT_GITHUB, bx2, by, bxs, bys
   CONTROL "", IDC_ABOUT_LOGO, "Static", SS_OWNERDRAW | SS_NOTIFY, m, m - 4, 64, 48
-  LTEXT  "", IDT_ABOUT_VERSION, m, 54, xc, 8
-  LTEXT  "", IDT_ABOUT_DATE, m, 67, xc, 8
-  LTEXT  MY_COPYRIGHT, -1, m, 80, xc, 8
-  LTEXT  "7-Zip is free software", IDT_ABOUT_INFO, m, y, xc, 8
-  LTEXT  "7-Zip Modern UI edition v1.0", -1, m, y + 26, xc, 8
-  LTEXT  "Modifications copyright (c) 2026 saturn76-source", -1, m, y + 39, xc, 8
+  LTEXT  "7-Zip Modern UI edition v1.01", IDT_ABOUT_EDITION, m, 54, xc, 8
+  LTEXT  "Modifications copyright (c) 2026 saturn76-source", -1, m, 67, xc, 8
+  LTEXT  "Unofficial build, not made or supported by Igor Pavlov", -1, m, 80, xc, 8
+  GROUPBOX  "Source code", -1, m, gy, xc, gys
+  LTEXT  "", IDT_ABOUT_VERSION, gx, gy + 14, gxs, 8
+  LTEXT  "", IDT_ABOUT_DATE, gx, gy + 27, gxs, 8
+  LTEXT  MY_COPYRIGHT, -1, gx, gy + 40, gxs, 8
+  LTEXT  "7-Zip is free software", IDT_ABOUT_INFO, gx, gy + 53, gxs, 8
+  PUSHBUTTON  "www.7-zip.org", IDB_ABOUT_HOMEPAGE, m + xc - 8 - bxs, gy + gys - bys - 6, bxs, bys
 }

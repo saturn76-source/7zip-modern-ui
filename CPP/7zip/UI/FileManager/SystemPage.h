@@ -85,6 +85,8 @@ class CSystemPage: public NWindows::NControl::CPropertyPage
   CObjectVector<CAssoc> _items;
 
   unsigned _numIcons;
+  int _iconSize;  // icon size in list: 2 * system small icon size
+  int _scale;     // DPI scale in percent, for column widths
   NWindows::NControl::CImageList _imageList;
   NWindows::NControl::CListView _listView;
 
@@ -114,7 +116,7 @@ class CSystemPage: public NWindows::NControl::CPropertyPage
 public:
   bool WasChanged;
   
-  CSystemPage(): WasChanged(false) {}
+  CSystemPage(): _iconSize(32), _scale(100), WasChanged(false) {}
 
   virtual bool OnInit() Z7_override;
   virtual void OnNotifyHelp() Z7_override;

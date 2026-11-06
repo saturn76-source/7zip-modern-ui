@@ -907,7 +907,7 @@ void CPanel::ApplyTheme()
 
 static const unsigned k_ZoomLevels[] = { 50, 67, 75, 80, 90, 100, 110, 125, 150, 175, 200, 250, 300, 400 };
 static const unsigned k_ZoomDefault = 100;
-static const wchar_t * const k_Reg_FM_Zoom = L"Software\\7-Zip\\FM";
+static const wchar_t * const k_Reg_FM_Zoom = L"Software\\7-Zip Modern UI\\FM";
 static const wchar_t * const k_Reg_ListZoom = L"ListZoom";
 
 static unsigned g_ListZoom = 0; // 0 : not loaded yet

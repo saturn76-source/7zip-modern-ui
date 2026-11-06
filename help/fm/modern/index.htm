@@ -32,9 +32,14 @@ Only the user interface was changed. Compression and extraction code is the orig
 
 <H4>Settings</H4>
 
-<P>The Modern UI settings are saved in the registry key <CODE>HKEY_CURRENT_USER\Software\7-Zip\FM</CODE>,
-together with the settings of the original 7-Zip File Manager:
-<CODE>Theme</CODE>, <CODE>ToolbarLayout</CODE>, <CODE>ToolbarIconStyle</CODE>, <CODE>ListZoom</CODE>, <CODE>SizeInKB</CODE>.</P>
+<P>The Modern UI edition saves its settings in its own registry key
+<CODE>HKEY_CURRENT_USER\Software\7-Zip Modern UI</CODE>, so they are not shared with the original 7-Zip.
+The Modern UI settings are in the <CODE>FM</CODE> subkey:
+<CODE>Theme</CODE>, <CODE>ToolbarLayout</CODE>, <CODE>ToolbarIconStyle</CODE>, <CODE>ListZoom</CODE>, <CODE>SizeInKB</CODE>.
+On the first start, the settings of the original 7-Zip (<CODE>HKEY_CURRENT_USER\Software\7-Zip</CODE>) are copied once.</P>
+
+<P>File associations made in <B>Tools / Options / System</B> use the names <CODE>7-Zip-ModernUI.zip</CODE>,
+<CODE>7-Zip-ModernUI.7z</CODE> and so on, so they do not replace the associations of the original 7-Zip.</P>
 
 <HR>
 <P>Modern UI modifications by saturn76-source.
