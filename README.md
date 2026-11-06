@@ -20,6 +20,13 @@ Real screenshots of the original 7-Zip and the 5 toolbar styles. Change the styl
 
 </details>
 
+### Customize the toolbar
+
+Right-click the toolbar > **Customize...**, or **View > Toolbars > Customize...**, or double-click an empty part of the toolbar.
+Add, remove and reorder buttons, also by drag and drop. **Reset** restores the default buttons.
+
+![Customize Toolbar window](screenshots/customize-toolbar.png)
+
 ## Features
 
 - **One-row toolbar** with big icons and labels. Buttons that don't fit go into the `»` menu.
