@@ -344,7 +344,7 @@ bool CAboutDialog::OnInit()
   #endif
   SetItemText(IDT_ABOUT_VERSION, UString("7-Zip " MY_VERSION_CPU));
   SetItemText(IDT_ABOUT_DATE, LLL(MY_DATE));
-  SetItemText(IDT_ABOUT_EDITION, UString("7-Zip Modern UI edition v1.01, based on 7-Zip " MY_VERSION " source code"));
+  SetItemText(IDT_ABOUT_EDITION, UString("7-Zip Modern UI edition v1.02, based on 7-Zip " MY_VERSION " source code"));
 
   if (InitLogo())
   {

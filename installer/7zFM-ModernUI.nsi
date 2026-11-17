@@ -7,8 +7,8 @@ Unicode true
 !include "x64.nsh"
 
 !define APP_NAME     "7-Zip Modern UI"
-!define APP_VERSION  "1.01"
-!define BASE_VERSION "26.05"
+!define APP_VERSION  "1.02"
+!define BASE_VERSION "26.06"
 !define APP_PUBLISHER "saturn76-source (based on 7-Zip by Igor Pavlov)"
 !define UNINST_KEY   "Software\Microsoft\Windows\CurrentVersion\Uninstall\7-Zip Modern UI"
 !define SRC          ".."

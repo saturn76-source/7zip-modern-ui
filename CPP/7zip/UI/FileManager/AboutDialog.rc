@@ -25,7 +25,7 @@ CAPTION "About 7-Zip Modern UI edition"
   DEFPUSHBUTTON  "OK", IDOK, bx1, by, bxs, bys
   PUSHBUTTON  "GitHub", IDB_ABOUT_GITHUB, bx2, by, bxs, bys
   CONTROL "", IDC_ABOUT_LOGO, "Static", SS_OWNERDRAW | SS_NOTIFY, m, m - 4, 64, 48
-  LTEXT  "7-Zip Modern UI edition v1.01", IDT_ABOUT_EDITION, m, 54, xc, 8
+  LTEXT  "7-Zip Modern UI edition v1.02", IDT_ABOUT_EDITION, m, 54, xc, 8
   LTEXT  "Modifications copyright (c) 2026 saturn76-source", -1, m, 67, xc, 8
   LTEXT  "Unofficial build, not made or supported by Igor Pavlov", -1, m, 80, xc, 8
   GROUPBOX  "Source code", -1, m, gy, xc, gys

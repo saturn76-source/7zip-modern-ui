@@ -96,7 +96,7 @@ public static class SetupSide
         }
 
         using (var f4 = new Font("Segoe UI", 12f, GraphicsUnit.Pixel))
-          Center(g, "based on 7-Zip 26.05", f4, gray, W, 448);
+          Center(g, "based on 7-Zip 26.06", f4, gray, W, 448);
       }
       bmp.Save(outBmp, ImageFormat.Bmp);
       if (outPng != null) bmp.Save(outPng, ImageFormat.Png);
